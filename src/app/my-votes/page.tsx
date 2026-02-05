@@ -89,7 +89,7 @@ export default function MyVotesPage() {
 
   if (authLoading || isLoading) {
     return (
-      <DashboardLayout creditsSpent={totalCreditsSpent}>
+      <DashboardLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -98,7 +98,7 @@ export default function MyVotesPage() {
   }
 
   return (
-    <DashboardLayout creditsSpent={totalCreditsSpent}>
+    <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">My Votes</h1>

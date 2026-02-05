@@ -308,7 +308,7 @@ export default function SessionDetailPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout creditsSpent={creditsSpent}>
+      <DashboardLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -318,7 +318,7 @@ export default function SessionDetailPage() {
 
   if (error || !session) {
     return (
-      <DashboardLayout creditsSpent={creditsSpent}>
+      <DashboardLayout>
         <div className="space-y-4">
           <Button variant="ghost" onClick={() => router.back()} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -338,7 +338,7 @@ export default function SessionDetailPage() {
   const canAddVote = creditsRemaining >= nextVoteCost
 
   return (
-    <DashboardLayout creditsSpent={creditsSpent}>
+    <DashboardLayout>
       <div className="space-y-6">
         {/* Back Button */}
         <Button variant="ghost" onClick={() => router.back()} className="gap-2">

@@ -372,7 +372,7 @@ export default function SessionsPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout creditsSpent={creditsSpent}>
+      <DashboardLayout>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -381,7 +381,7 @@ export default function SessionsPage() {
   }
 
   return (
-    <DashboardLayout creditsSpent={creditsSpent}>
+    <DashboardLayout>
       <div className="space-y-6">
         {/* Title */}
         <div>

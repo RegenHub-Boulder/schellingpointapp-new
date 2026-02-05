@@ -19,13 +19,29 @@ import { Badge } from '@/components/ui/badge'
 import { CreditBar } from '@/components/CreditBar'
 import { OnboardingModal } from '@/components/auth/OnboardingModal'
 import { useAuth } from '@/hooks/useAuth'
-import { cn } from '@/lib/utils'
+import { cn, votesToCredits } from '@/lib/utils'
 
 const TOTAL_CREDITS = 100
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null
+  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
+  const stored = localStorage.getItem(storageKey)
+  if (stored) {
+    try {
+      const session = JSON.parse(stored)
+      return session?.access_token || null
+    } catch {
+      return null
+    }
+  }
+  return null
+}
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  creditsSpent?: number
 }
 
 const navItems = [
@@ -41,10 +57,54 @@ const actionItems = [
   { href: '/propose', label: 'Propose Session', icon: PlusCircle },
 ]
 
-export function DashboardLayout({ children, creditsSpent = 0 }: DashboardLayoutProps) {
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const { user, profile, signOut, needsOnboarding, refreshProfile } = useAuth()
   const [showOnboarding, setShowOnboarding] = React.useState(false)
+  const [userVotes, setUserVotes] = React.useState<Record<string, number>>({})
+
+  // Calculate credits spent from user votes
+  const creditsSpent = React.useMemo(() => {
+    return Object.values(userVotes).reduce((sum, votes) => sum + votesToCredits(votes), 0)
+  }, [userVotes])
+
+  // Fetch user's votes when user changes
+  React.useEffect(() => {
+    if (!user) {
+      setUserVotes({})
+      return
+    }
+
+    const fetchUserVotes = async () => {
+      const token = getAccessToken()
+      if (!token) return
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&select=session_id,vote_count`,
+          {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          const votesMap: Record<string, number> = {}
+          data.forEach((v: { session_id: string; vote_count: number }) => {
+            votesMap[v.session_id] = v.vote_count
+          })
+          setUserVotes(votesMap)
+        }
+      } catch (err) {
+        console.error('Error fetching user votes:', err)
+      }
+    }
+
+    fetchUserVotes()
+  }, [user])
 
   // Show onboarding modal when needed
   React.useEffect(() => {
