@@ -203,6 +203,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = React.useCallback(async (email: string) => {
     try {
+      // Get the current origin for redirect (works in both dev and prod)
+      const redirectTo = typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : undefined
+
       const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
         method: 'POST',
         headers: {
@@ -213,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           create_user: true,
           gotrue_meta_security: {},
+          ...(redirectTo && { redirect_to: redirectTo }),
         }),
       })
 
