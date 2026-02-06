@@ -35,8 +35,43 @@ const AuthContext = React.createContext<AuthContextValue | null>(null)
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// Refresh tokens 5 minutes before expiry
+const TOKEN_REFRESH_MARGIN = 5 * 60
+
 function getStorageKey() {
   return `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
+}
+
+// Refresh the access token using the refresh token
+async function refreshSession(refreshToken: string): Promise<{
+  access_token: string
+  refresh_token: string
+  expires_at: number
+  user: any
+} | null> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+        user: data.user,
+      }
+    }
+  } catch (err) {
+    console.error('Error refreshing session:', err)
+  }
+  return null
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -156,10 +191,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (stored) {
         try {
-          const session = JSON.parse(stored)
+          let session = JSON.parse(stored)
           console.log('Found stored session:', session?.user?.email)
 
           if (session?.user && session?.access_token) {
+            const now = Math.floor(Date.now() / 1000)
+            const expiresAt = session.expires_at || 0
+            const isExpiredOrExpiring = expiresAt > 0 && (now >= expiresAt - TOKEN_REFRESH_MARGIN)
+
+            // If token is expired or about to expire, try to refresh
+            if (isExpiredOrExpiring && session.refresh_token) {
+              console.log('Token expired or expiring soon, refreshing...')
+              const newSession = await refreshSession(session.refresh_token)
+              if (newSession) {
+                console.log('Session refreshed successfully')
+                session = newSession
+                localStorage.setItem(storageKey, JSON.stringify(session))
+              } else {
+                console.log('Failed to refresh session, clearing')
+                localStorage.removeItem(storageKey)
+                if (mounted) {
+                  setIsLoading(false)
+                }
+                return
+              }
+            }
+
             // Verify the session is still valid
             const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
               headers: {
@@ -177,10 +234,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await fetchProfile(userData.id, session.access_token)
               }
             } else {
-              // Only clear localStorage if the session is actually invalid (API returned error)
-              // Don't clear just because component unmounted
-              console.log('Session invalid, clearing')
-              localStorage.removeItem(storageKey)
+              // Token validation failed - try refreshing before giving up
+              if (session.refresh_token) {
+                console.log('Token invalid, attempting refresh...')
+                const newSession = await refreshSession(session.refresh_token)
+                if (newSession) {
+                  console.log('Session refreshed after validation failure')
+                  localStorage.setItem(storageKey, JSON.stringify(newSession))
+                  if (mounted) {
+                    setUser(newSession.user as User)
+                    await fetchProfile(newSession.user.id, newSession.access_token)
+                  }
+                } else {
+                  console.log('Refresh failed, clearing session')
+                  localStorage.removeItem(storageKey)
+                }
+              } else {
+                console.log('Session invalid, no refresh token, clearing')
+                localStorage.removeItem(storageKey)
+              }
             }
           }
         } catch (err) {
@@ -201,6 +273,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
     }
   }, [fetchProfile])
+
+  // Periodic token refresh to keep session alive
+  React.useEffect(() => {
+    if (!user) return
+
+    const checkAndRefresh = async () => {
+      const storageKey = getStorageKey()
+      const stored = localStorage.getItem(storageKey)
+      if (!stored) return
+
+      try {
+        const session = JSON.parse(stored)
+        const now = Math.floor(Date.now() / 1000)
+        const expiresAt = session.expires_at || 0
+
+        // Refresh if within 10 minutes of expiry
+        if (expiresAt > 0 && now >= expiresAt - 10 * 60 && session.refresh_token) {
+          console.log('Proactively refreshing token...')
+          const newSession = await refreshSession(session.refresh_token)
+          if (newSession) {
+            console.log('Token refreshed proactively')
+            localStorage.setItem(storageKey, JSON.stringify(newSession))
+            setUser(newSession.user as User)
+          }
+        }
+      } catch (err) {
+        console.error('Error in periodic refresh:', err)
+      }
+    }
+
+    // Check every 5 minutes
+    const interval = setInterval(checkAndRefresh, 5 * 60 * 1000)
+
+    // Also refresh when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndRefresh()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user])
 
   const signIn = React.useCallback(async (email: string) => {
     try {
