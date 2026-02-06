@@ -42,9 +42,25 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
+const DEFAULT_INTERESTS = [
+  'Governance',
+  'DeFi',
+  'DAOs',
+  'NFTs',
+  'Layer 2',
+  'Privacy',
+  'Security',
+  'UX/UI',
+  'Public Goods',
+  'ReFi',
+  'AI/ML',
+  'Developer Tools',
+]
+
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user, profile, refreshProfile } = useAuth()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const interestInputRef = React.useRef<HTMLInputElement>(null)
 
   const [displayName, setDisplayName] = React.useState('')
   const [bio, setBio] = React.useState('')
@@ -59,6 +75,41 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isUploading, setIsUploading] = React.useState(false)
   const [saveMessage, setSaveMessage] = React.useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Autocomplete state
+  const [allInterests, setAllInterests] = React.useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = React.useState(false)
+  const [highlightedIndex, setHighlightedIndex] = React.useState(-1)
+
+  // Fetch all unique interests from profiles
+  React.useEffect(() => {
+    if (isOpen) {
+      const fetchAllInterests = async () => {
+        try {
+          const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?select=interests`,
+            {
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+              },
+            }
+          )
+          if (response.ok) {
+            const profiles = await response.json()
+            const interestSet = new Set<string>(DEFAULT_INTERESTS)
+            profiles.forEach((p: { interests: string[] | null }) => {
+              p.interests?.forEach((i) => interestSet.add(i))
+            })
+            setAllInterests(Array.from(interestSet).sort())
+          }
+        } catch (err) {
+          console.error('Error fetching interests:', err)
+        }
+      }
+      fetchAllInterests()
+    }
+  }, [isOpen])
+
   // Load profile data into form when modal opens
   React.useEffect(() => {
     if (isOpen && profile) {
@@ -70,8 +121,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setAvatarUrl(profile.avatar_url || '')
       setInterests(profile.interests || [])
       setSaveMessage(null)
+      setNewInterest('')
+      setShowSuggestions(false)
     }
   }, [isOpen, profile])
+
+  // Filter suggestions based on input
+  const filteredSuggestions = React.useMemo(() => {
+    if (!newInterest.trim()) return []
+    const query = newInterest.toLowerCase()
+    return allInterests
+      .filter((i) =>
+        i.toLowerCase().includes(query) &&
+        !interests.includes(i)
+      )
+      .slice(0, 8)
+  }, [newInterest, allInterests, interests])
 
   // Close on escape key
   React.useEffect(() => {
@@ -105,11 +170,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     reader.readAsDataURL(file)
   }
 
-  const handleAddInterest = () => {
-    const trimmed = newInterest.trim()
-    if (trimmed && !interests.includes(trimmed)) {
-      setInterests([...interests, trimmed])
+  const handleAddInterest = (interest?: string) => {
+    const toAdd = interest || newInterest.trim()
+    if (toAdd && !interests.includes(toAdd)) {
+      setInterests([...interests, toAdd])
       setNewInterest('')
+      setShowSuggestions(false)
+      setHighlightedIndex(-1)
     }
   }
 
@@ -117,10 +184,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setInterests(interests.filter((i) => i !== interest))
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+  const handleInterestKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
       e.preventDefault()
-      handleAddInterest()
+      setHighlightedIndex((prev) =>
+        prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+      )
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (highlightedIndex >= 0 && filteredSuggestions[highlightedIndex]) {
+        handleAddInterest(filteredSuggestions[highlightedIndex])
+      } else {
+        handleAddInterest()
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false)
+      setHighlightedIndex(-1)
     }
   }
 
@@ -307,16 +389,49 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <Hash className="h-4 w-4 text-muted-foreground" />
               Interests
             </label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add an interest..."
-                value={newInterest}
-                onChange={(e) => setNewInterest(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <Button type="button" variant="outline" size="icon" onClick={handleAddInterest}>
-                <Plus className="h-4 w-4" />
-              </Button>
+            <div className="relative">
+              <div className="flex gap-2">
+                <Input
+                  ref={interestInputRef}
+                  placeholder="Type to search interests..."
+                  value={newInterest}
+                  onChange={(e) => {
+                    setNewInterest(e.target.value)
+                    setShowSuggestions(true)
+                    setHighlightedIndex(-1)
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => {
+                    // Delay to allow click on suggestion
+                    setTimeout(() => setShowSuggestions(false), 150)
+                  }}
+                  onKeyDown={handleInterestKeyDown}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={() => handleAddInterest()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Autocomplete dropdown */}
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="absolute z-20 top-full left-0 right-12 mt-1 bg-card border rounded-lg shadow-lg overflow-hidden">
+                  {filteredSuggestions.map((suggestion, index) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors ${
+                        index === highlightedIndex ? 'bg-muted' : ''
+                      }`}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        handleAddInterest(suggestion)
+                      }}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             {interests.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
