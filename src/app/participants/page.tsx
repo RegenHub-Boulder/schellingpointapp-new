@@ -48,16 +48,18 @@ export default function ParticipantsPage() {
   const [search, setSearch] = React.useState('')
   const [selectedInterest, setSelectedInterest] = React.useState<string | null>(null)
   const [selectedParticipant, setSelectedParticipant] = React.useState<Participant | null>(null)
+  const highlightHandledRef = React.useRef(false)
 
-  // Auto-open profile when highlight param is present and participants are loaded
+  // Auto-open profile when highlight param is present and participants are loaded (only once)
   React.useEffect(() => {
-    if (highlightId && participants.length > 0 && !selectedParticipant) {
+    if (highlightId && participants.length > 0 && !highlightHandledRef.current) {
       const highlighted = participants.find((p) => p.id === highlightId)
       if (highlighted) {
         setSelectedParticipant(highlighted)
+        highlightHandledRef.current = true
       }
     }
-  }, [highlightId, participants, selectedParticipant])
+  }, [highlightId, participants])
 
   React.useEffect(() => {
     const fetchParticipants = async () => {
