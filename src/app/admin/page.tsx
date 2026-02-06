@@ -13,6 +13,7 @@ import {
   Clock,
   ChevronDown,
   Settings,
+  LayoutGrid,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -315,12 +316,20 @@ export default function AdminPage() {
               </Link>
               <h1 className="font-bold text-lg">Admin Dashboard</h1>
             </div>
-            <Button variant="outline" asChild>
-              <Link href="/admin/setup">
-                <Settings className="h-4 w-4 mr-2" />
-                Event Setup
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild>
+                <Link href="/admin/schedule">
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Schedule Builder
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/setup">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Event Setup
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
