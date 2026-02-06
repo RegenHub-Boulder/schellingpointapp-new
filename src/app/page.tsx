@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Presentation, Vote, Calendar, ArrowRight, Sparkles } from 'lucide-react'
+import { Presentation, Vote, Calendar, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
@@ -57,9 +58,13 @@ export default function LandingPage() {
       <header className="border-b border-border/50 backdrop-blur-xl bg-background/50 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center neon-glow">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <Image
+              src="/logo.svg"
+              alt="EthBoulder"
+              width={40}
+              height={40}
+              className="rounded-lg neon-glow"
+            />
             <div>
               <span className="font-display font-bold text-lg">Schelling Point</span>
               <span className="text-xs text-muted-foreground ml-2">by EthBoulder</span>
@@ -89,7 +94,8 @@ export default function LandingPage() {
 
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
           A decentralized, community-governed Ethereum event.
-          <span className="text-foreground font-medium"> Propose sessions. Vote with quadratic credits. Shape the schedule together.</span>
+          <br />
+          <span className="text-foreground font-medium">Propose sessions. Vote with quadratic credits. Shape the schedule together.</span>
         </p>
 
         <div className="flex gap-4 justify-center flex-wrap">
