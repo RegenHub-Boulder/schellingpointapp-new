@@ -141,9 +141,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center gap-3">
               {user && (
                 <>
-                  <span className="text-sm text-muted-foreground hidden sm:inline">
-                    {profile?.display_name || user.email}
-                  </span>
                   {profile?.is_admin && (
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/admin">
@@ -152,6 +149,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       </Link>
                     </Button>
                   )}
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
+                    <span className="text-sm text-muted-foreground hidden sm:inline">
+                      {profile?.display_name || user.email}
+                    </span>
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={profile.display_name || ''}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {(profile?.display_name || user.email || '?')[0].toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
                   <Button variant="ghost" size="sm" onClick={signOut}>
                     <LogOut className="h-4 w-4" />
                   </Button>
