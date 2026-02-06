@@ -12,7 +12,6 @@ import {
   X,
   Plus,
   Camera,
-  Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -89,50 +88,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }, [isOpen, onClose])
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !user) return
-
-    const token = getAccessToken()
-    if (!token) return
+    if (!file) return
 
     setIsUploading(true)
-
-    try {
-      // Create a unique filename
-      const ext = file.name.split('.').pop()
-      const fileName = `${user.id}-${Date.now()}.${ext}`
-
-      // Upload to Supabase Storage
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch(
-        `${SUPABASE_URL}/storage/v1/object/avatars/${fileName}`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-          body: file,
-        }
-      )
-
-      if (response.ok) {
-        // Get the public URL
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/avatars/${fileName}`
-        setAvatarUrl(publicUrl)
-      } else {
-        console.error('Upload failed:', await response.text())
-        setSaveMessage({ type: 'error', text: 'Failed to upload image. Try a URL instead.' })
-      }
-    } catch (err) {
-      console.error('Upload error:', err)
-      setSaveMessage({ type: 'error', text: 'Failed to upload image.' })
-    } finally {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string)
       setIsUploading(false)
     }
+    reader.onerror = () => {
+      setSaveMessage({ type: 'error', text: 'Failed to read image.' })
+      setIsUploading(false)
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleAddInterest = () => {
