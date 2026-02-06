@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CreditBar } from '@/components/CreditBar'
 import { OnboardingModal } from '@/components/auth/OnboardingModal'
+import { SettingsModal } from '@/components/SettingsModal'
 import { useAuth } from '@/hooks/useAuth'
 import { cn, votesToCredits } from '@/lib/utils'
 
@@ -61,6 +62,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const { user, profile, signOut, needsOnboarding, refreshProfile } = useAuth()
   const [showOnboarding, setShowOnboarding] = React.useState(false)
+  const [showSettings, setShowSettings] = React.useState(false)
   const [userVotes, setUserVotes] = React.useState<Record<string, number>>({})
 
   // Calculate credits spent from user votes
@@ -149,8 +151,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       </Link>
                     </Button>
                   )}
-                  <Link
-                    href="/settings"
+                  <button
+                    onClick={() => setShowSettings(true)}
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                   >
                     <span className="text-sm text-muted-foreground hidden sm:inline">
@@ -169,7 +171,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         </span>
                       )}
                     </div>
-                  </Link>
+                  </button>
                   <Button variant="ghost" size="sm" onClick={signOut}>
                     <LogOut className="h-4 w-4" />
                   </Button>
@@ -245,6 +247,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           onComplete={handleOnboardingComplete}
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   )
 }

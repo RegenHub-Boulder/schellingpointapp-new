@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* BDO Grotesk Font Family */
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-DemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-ExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* EthBoulder 2026 Design System
+   Bold & Modern with Strategic Neon Accents
+   All colors in HSL format */
+
+@layer base {
+  :root {
+    /* Dark theme as default for event app */
+    --background: 220 20% 6%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 20% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 20% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Neon lime #B2FF00 */
+    --primary: 78.1 100% 50%;
+    --primary-foreground: 220 20% 6%;
+
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 220 15% 20%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 82 100% 50%;
+    --success-foreground: 220 15% 15%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 18%;
+    --ring: 78.1 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --neon-glow: 78.1 100% 50%;
+    --glass: 220 20% 12%;
+    --glass-border: 220 15% 25%;
+  }
+
+  .light {
+    /* Warm cream/off-white background #F8F7F3 */
+    --background: 40 23% 96%;
+    --foreground: 220 25% 10%;
+
+    --card: 40 18% 98%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 40 18% 99%;
+    --popover-foreground: 220 25% 10%;
+
+    /* Neon lime #B2FF00 */
+    --primary: 78.1 100% 50%;
+    --primary-foreground: 220 25% 10%;
+
+    --secondary: 40 12% 92%;
+    --secondary-foreground: 220 25% 10%;
+
+    --muted: 40 10% 94%;
+    --muted-foreground: 220 15% 35%;
+
+    --accent: 40 12% 90%;
+    --accent-foreground: 220 25% 10%;
+
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 82 100% 50%;
+    --success-foreground: 220 25% 10%;
+
+    --border: 40 12% 85%;
+    --input: 40 12% 88%;
+    --ring: 78.1 100% 50%;
+
+    --neon-glow: 78.1 100% 50%;
+    --glass: 40 18% 97%;
+    --glass-border: 40 12% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::selection {
+    @apply bg-primary text-primary-foreground;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-[hsl(var(--glass))] backdrop-blur-xl border border-[hsl(var(--glass-border))];
+  }
+
+  /* Light mode card hover - lighter grey background */
+  .light .glass-card:hover {
+    background-color: hsl(40 20% 92%);
+  }
+
+  /* Neon glow effect - use sparingly */
+  .neon-glow {
+    box-shadow: 0 0 20px hsl(var(--neon-glow) / 0.3),
+                0 0 40px hsl(var(--neon-glow) / 0.1);
+  }
+
+  .neon-glow-sm {
+    box-shadow: 0 0 10px hsl(var(--neon-glow) / 0.2);
+  }
+
+  /* Subtle gradient backgrounds */
+  .gradient-radial {
+    background: radial-gradient(ellipse at top, hsl(var(--neon-glow) / 0.08) 0%, transparent 50%);
+  }
+
+  /* Bottom nav safe area */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 5rem);
+  }
+
+  /* Interactive elements */
+  .interactive {
+    @apply transition-all duration-200 ease-out;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .gradient-mask {
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth page transitions */
+  .page-transition {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Text gradient - keep as exact neon #B2FF00 */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(78.1 100% 50%) 0%, hsl(78.1 100% 50%) 100%);
+  }
+}
+
+/* Custom focus styles */
+@layer base {
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
