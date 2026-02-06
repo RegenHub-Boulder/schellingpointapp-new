@@ -77,21 +77,26 @@ export default function SessionDetailPage() {
   const [allUserVotes, setAllUserVotes] = React.useState<Record<string, number>>({})
   const [showShareToast, setShowShareToast] = React.useState(false)
   const [showCalendarMenu, setShowCalendarMenu] = React.useState(false)
+  const [showHostCard, setShowHostCard] = React.useState(false)
   const calendarMenuRef = React.useRef<HTMLDivElement>(null)
+  const hostCardRef = React.useRef<HTMLDivElement>(null)
 
-  // Close calendar menu when clicking outside
+  // Close calendar menu and host card when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (calendarMenuRef.current && !calendarMenuRef.current.contains(event.target as Node)) {
         setShowCalendarMenu(false)
       }
+      if (hostCardRef.current && !hostCardRef.current.contains(event.target as Node)) {
+        setShowHostCard(false)
+      }
     }
 
-    if (showCalendarMenu) {
+    if (showCalendarMenu || showHostCard) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showCalendarMenu])
+  }, [showCalendarMenu, showHostCard])
 
   // Calculate credits spent
   const creditsSpent = React.useMemo(() => {
@@ -105,7 +110,7 @@ export default function SessionDetailPage() {
     const fetchSession = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*)`,
+          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,interests)`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -250,7 +255,7 @@ export default function SessionDetailPage() {
 
       // Refresh session to get updated vote counts
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*)`,
+        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,interests)`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -501,13 +506,138 @@ export default function SessionDetailPage() {
 
                   <h1 className="text-3xl font-bold mb-4">{session.title}</h1>
 
-                  {session.host_name && (
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <span className="text-muted-foreground">Hosted by</span>
-                      <span className="font-medium">{session.host_name}</span>
+                  {(session.host_name || session.host) && (
+                    <div className="relative" ref={hostCardRef}>
+                      <button
+                        onClick={() => setShowHostCard(!showHostCard)}
+                        className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity group"
+                      >
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                          {session.host?.avatar_url ? (
+                            <img
+                              src={session.host.avatar_url}
+                              alt={session.host.display_name || session.host_name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="text-muted-foreground">Hosted by</span>
+                        <span className="font-medium group-hover:text-primary transition-colors">
+                          {session.host?.display_name || session.host_name}
+                        </span>
+                      </button>
+
+                      {/* Host Profile Card - Desktop: floating card, Mobile: bottom sheet style */}
+                      {showHostCard && (
+                        <>
+                          {/* Mobile overlay */}
+                          <div
+                            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                            onClick={() => setShowHostCard(false)}
+                          />
+                          {/* Card */}
+                          <div className="fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:bottom-auto md:left-0 md:top-full md:mt-2 md:w-80 bg-card border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 md:slide-in-from-bottom-0">
+                            <div className="p-4">
+                              {/* Header with avatar */}
+                              <div className="flex items-start gap-3 mb-3">
+                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                                  {session.host?.avatar_url ? (
+                                    <img
+                                      src={session.host.avatar_url}
+                                      alt={session.host.display_name || session.host_name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <User className="h-6 w-6 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold truncate">
+                                    {session.host?.display_name || session.host_name}
+                                  </h4>
+                                  {session.host?.affiliation && (
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {session.host.affiliation}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Bio */}
+                              {session.host?.bio && (
+                                <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
+                                  {session.host.bio}
+                                </p>
+                              )}
+
+                              {/* Building/What they're working on */}
+                              {session.host?.building && (
+                                <div className="text-sm mb-3">
+                                  <span className="text-muted-foreground">Building: </span>
+                                  <span>{session.host.building}</span>
+                                </div>
+                              )}
+
+                              {/* Interests */}
+                              {session.host?.interests && session.host.interests.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-3">
+                                  {session.host.interests.slice(0, 4).map((interest: string) => (
+                                    <Badge key={interest} variant="secondary" className="text-xs">
+                                      {interest}
+                                    </Badge>
+                                  ))}
+                                  {session.host.interests.length > 4 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{session.host.interests.length - 4}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Telegram link */}
+                              {session.host?.telegram && (
+                                <a
+                                  href={`https://t.me/${session.host.telegram.replace('@', '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                  @{session.host.telegram.replace('@', '')}
+                                </a>
+                              )}
+
+                              {/* View profile link */}
+                              {session.host?.id && (
+                                <Link
+                                  href={`/participants?highlight=${session.host.id}`}
+                                  className="block mt-3 pt-3 border-t text-sm text-center text-primary hover:underline"
+                                  onClick={() => setShowHostCard(false)}
+                                >
+                                  View full profile
+                                </Link>
+                              )}
+
+                              {/* If no host profile, show minimal info */}
+                              {!session.host && session.host_name && (
+                                <p className="text-sm text-muted-foreground italic">
+                                  Profile details not available
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Mobile close button */}
+                            <button
+                              onClick={() => setShowHostCard(false)}
+                              className="md:hidden w-full py-3 border-t text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

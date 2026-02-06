@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   Loader2,
   Users,
@@ -40,11 +41,23 @@ interface Participant {
 
 export default function ParticipantsPage() {
   const { isLoading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const highlightId = searchParams.get('highlight')
   const [participants, setParticipants] = React.useState<Participant[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [search, setSearch] = React.useState('')
   const [selectedInterest, setSelectedInterest] = React.useState<string | null>(null)
   const [selectedParticipant, setSelectedParticipant] = React.useState<Participant | null>(null)
+
+  // Auto-open profile when highlight param is present and participants are loaded
+  React.useEffect(() => {
+    if (highlightId && participants.length > 0 && !selectedParticipant) {
+      const highlighted = participants.find((p) => p.id === highlightId)
+      if (highlighted) {
+        setSelectedParticipant(highlighted)
+      }
+    }
+  }, [highlightId, participants, selectedParticipant])
 
   React.useEffect(() => {
     const fetchParticipants = async () => {

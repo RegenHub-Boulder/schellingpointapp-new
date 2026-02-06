@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* BDO Grotesk Font */
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-DemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BDO Grotesk';
+  src: url('/fonts/BDOGrotesk-ExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 222 47% 6%;
@@ -122,4 +155,48 @@
 
 .btn-primary-glow:hover {
   box-shadow: 0 6px 20px hsl(var(--primary) / 0.5);
+}
+
+/* Glass card effect */
+.glass-card {
+  background: hsl(var(--card) / 0.6);
+  border: 1px solid hsl(var(--border) / 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Animated gradient blobs */
+@keyframes gradient-drift {
+  0% { transform: translate(0%, 0%); }
+  50% { transform: translate(-10%, 5%); }
+  100% { transform: translate(0%, 0%); }
+}
+
+@keyframes gradient-drift-reverse {
+  0% { transform: translate(0%, 0%); }
+  50% { transform: translate(10%, -5%); }
+  100% { transform: translate(0%, 0%); }
+}
+
+@keyframes gradient-drift-slow {
+  0% { transform: translate(0%, 0%); }
+  50% { transform: translate(-5%, 8%); }
+  100% { transform: translate(0%, 0%); }
+}
+
+.animate-gradient-drift {
+  animation: gradient-drift 15s ease-in-out infinite;
+}
+
+.animate-gradient-drift-reverse {
+  animation: gradient-drift-reverse 18s ease-in-out infinite;
+}
+
+.animate-gradient-drift-slow {
+  animation: gradient-drift-slow 25s ease-in-out infinite;
+}
+
+/* Font display class */
+.font-display {
+  font-family: 'BDO Grotesk', system-ui, sans-serif;
 }
