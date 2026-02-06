@@ -61,7 +61,7 @@ function ParticipantsContent() {
   const [participants, setParticipants] = React.useState<Participant[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [search, setSearch] = React.useState('')
-  const [selectedInterest, setSelectedInterest] = React.useState<string | null>(null)
+  const [selectedInterests, setSelectedInterests] = React.useState<Set<string>>(new Set())
   const [selectedParticipant, setSelectedParticipant] = React.useState<Participant | null>(null)
   const highlightHandledRef = React.useRef(false)
 
@@ -122,12 +122,13 @@ function ParticipantsContent() {
         p.affiliation?.toLowerCase().includes(searchLower) ||
         p.building?.toLowerCase().includes(searchLower)
 
-      const matchesInterest =
-        !selectedInterest || p.interests?.includes(selectedInterest)
+      const matchesInterests =
+        selectedInterests.size === 0 ||
+        Array.from(selectedInterests).every((interest) => p.interests?.includes(interest))
 
-      return matchesSearch && matchesInterest
+      return matchesSearch && matchesInterests
     })
-  }, [participants, search, selectedInterest])
+  }, [participants, search, selectedInterests])
 
   const admins = filteredParticipants.filter((p) => p.is_admin)
   const regularParticipants = filteredParticipants.filter((p) => !p.is_admin)
@@ -169,20 +170,31 @@ function ParticipantsContent() {
           {/* Interest Filter */}
           {allInterests.length > 0 && (
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-sm text-muted-foreground">Filter by interest:</span>
-              <Button
-                variant={selectedInterest === null ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedInterest(null)}
-              >
-                All
-              </Button>
-              {allInterests.slice(0, 10).map((interest) => (
+              <span className="text-sm text-muted-foreground">Filter by interests:</span>
+              {selectedInterests.size > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedInterests(new Set())}
+                  className="text-muted-foreground"
+                >
+                  Clear all
+                </Button>
+              )}
+              {allInterests.map((interest) => (
                 <Button
                   key={interest}
-                  variant={selectedInterest === interest ? 'default' : 'outline'}
+                  variant={selectedInterests.has(interest) ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setSelectedInterest(interest)}
+                  onClick={() => {
+                    const newSet = new Set(selectedInterests)
+                    if (newSet.has(interest)) {
+                      newSet.delete(interest)
+                    } else {
+                      newSet.add(interest)
+                    }
+                    setSelectedInterests(newSet)
+                  }}
                 >
                   {interest}
                 </Button>
