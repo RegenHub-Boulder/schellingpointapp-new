@@ -13,6 +13,7 @@ import {
   Loader2,
   Heart,
   Zap,
+  Mic,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -175,6 +176,14 @@ export default function DashboardPage() {
       .slice(0, 5)
   }, [sessions, userVotes])
 
+  // Get sessions user proposed (hosted)
+  const userProposedSessions = React.useMemo(() => {
+    if (!user) return []
+    return sessions
+      .filter(s => s.host_id === user.id)
+      .sort((a, b) => (b.total_votes || 0) - (a.total_votes || 0))
+  }, [sessions, user])
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -199,58 +208,58 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <Sparkles className="h-5 w-5 text-primary" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-primary/10 w-fit">
+                  <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.totalSessions}</p>
-                  <p className="text-sm text-muted-foreground">Total Sessions</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalSessions}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Sessions</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-green-500/10">
-                  <Vote className="h-5 w-5 text-green-500" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-green-500/10 w-fit">
+                  <Vote className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.totalVotes}</p>
-                  <p className="text-sm text-muted-foreground">Total Votes</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalVotes}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Votes</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-blue-500/10">
-                  <Users className="h-5 w-5 text-blue-500" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-blue-500/10 w-fit">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.totalVoters}</p>
-                  <p className="text-sm text-muted-foreground">Total Voters</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalVoters}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Voters</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-purple-500/10">
-                  <Calendar className="h-5 w-5 text-purple-500" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-full bg-purple-500/10 w-fit">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.scheduledSessions}</p>
-                  <p className="text-sm text-muted-foreground">Scheduled</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.scheduledSessions}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Scheduled</p>
                 </div>
               </div>
             </CardContent>
@@ -404,6 +413,49 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* User's Proposed Sessions */}
+        {user && userProposedSessions.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Mic className="h-5 w-5 text-primary" />
+                  My Sessions
+                </CardTitle>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/sessions" className="text-muted-foreground">
+                    View All <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {userProposedSessions.map((session) => (
+                  <Link
+                    key={session.id}
+                    href={`/sessions/${session.id}`}
+                    className="p-4 rounded-lg border hover:border-primary/50 hover:bg-muted/30 transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-medium line-clamp-2 group-hover:text-primary transition-colors">
+                        {session.title}
+                      </p>
+                      <Badge variant="secondary" className="capitalize text-xs flex-shrink-0">
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Total votes</span>
+                      <span className="font-semibold text-primary">{session.total_votes || 0}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* User's Voted Sessions */}
         {user && userVotedSessions.length > 0 && (
