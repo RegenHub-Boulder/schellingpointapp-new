@@ -521,33 +521,33 @@ export default function SessionDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-hidden">
         {/* Back Button */}
         <Button variant="ghost" onClick={() => router.back()} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Sessions
         </Button>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 overflow-hidden">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* Header Card */}
-            <Card className="p-6">
+            <Card className="p-6 overflow-hidden">
               <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                    <FormatIcon className="h-4 w-4" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
+                    <FormatIcon className="h-4 w-4 flex-shrink-0" />
                     <span className="capitalize">{session.format}</span>
-                    <span className="text-muted-foreground/50">•</span>
-                    <Clock className="h-4 w-4" />
+                    <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                    <Clock className="h-4 w-4 flex-shrink-0" />
                     <span>{session.duration} min</span>
-                    <span className="text-muted-foreground/50">•</span>
+                    <span className="text-muted-foreground/50 hidden sm:inline">•</span>
                     <Badge variant={session.status === 'scheduled' ? 'default' : 'secondary'}>
                       {session.status}
                     </Badge>
                   </div>
 
-                  <h1 className="text-3xl font-bold mb-4">{session.title}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-4 break-words">{session.title}</h1>
 
                   {(session.host_name || session.host) && (
                     <div className="relative" ref={hostCardRef}>
@@ -817,9 +817,9 @@ export default function SessionDetailPage() {
             )}
 
             {/* Description */}
-            <Card className="p-6">
+            <Card className="p-6 overflow-hidden">
               <h2 className="text-xl font-semibold mb-4">About This Session</h2>
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none break-words">
                 {session.description ? (
                   session.description.split('\n').map((paragraph: string, i: number) => (
                     <p key={i} className="text-muted-foreground mb-3">
