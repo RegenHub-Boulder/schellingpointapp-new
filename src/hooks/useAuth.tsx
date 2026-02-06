@@ -122,6 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(userData as User)
                 await fetchProfile(userData.id, accessToken)
                 setIsLoading(false)
+                // Redirect to dashboard after successful auth from magic link
+                window.location.href = '/dashboard'
               }
               return // Auth complete, no need to continue
             } else {
