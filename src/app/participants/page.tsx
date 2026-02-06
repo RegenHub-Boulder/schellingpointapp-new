@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   Loader2,
@@ -40,6 +41,20 @@ interface Participant {
 }
 
 export default function ParticipantsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    }>
+      <ParticipantsContent />
+    </Suspense>
+  )
+}
+
+function ParticipantsContent() {
   const { isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const highlightId = searchParams.get('highlight')
