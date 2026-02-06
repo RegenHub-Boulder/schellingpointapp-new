@@ -367,12 +367,12 @@ export default function AdminSetupPage() {
           </Card>
 
           {/* Add Venue Button */}
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <MapPin className="h-5 w-5" />
               Venues & Availability
             </h2>
-            <Button onClick={() => setShowVenueForm(true)} disabled={showVenueForm}>
+            <Button onClick={() => setShowVenueForm(true)} disabled={showVenueForm} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Add Venue
             </Button>
@@ -460,28 +460,28 @@ export default function AdminSetupPage() {
               return (
                 <Card key={venue.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
+                    <div className="space-y-3">
                       <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Building className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Building className="h-5 w-5 text-primary flex-shrink-0" />
                           <h3 className="font-semibold">{venue.name}</h3>
                           {venue.is_primary && (
                             <Badge variant="default" className="text-xs">Primary</Badge>
                           )}
                           {venue.slug && (
-                            <Badge variant="outline" className="text-xs font-mono">{venue.slug}</Badge>
+                            <Badge variant="outline" className="text-xs font-mono hidden sm:inline-flex">{venue.slug}</Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-3 sm:gap-4 text-sm text-muted-foreground flex-wrap">
                           {venue.capacity && (
                             <span className="flex items-center gap-1">
                               <UsersIcon className="h-4 w-4" />
-                              {venue.capacity} capacity
+                              {venue.capacity} cap
                             </span>
                           )}
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            {venueSlots.length} time slots
+                            {venueSlots.length} slots
                           </span>
                         </div>
                         {venue.features && venue.features.length > 0 && (
@@ -494,27 +494,29 @@ export default function AdminSetupPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap sm:flex-nowrap pt-2 border-t">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => toggleVenueExpanded(venue.id)}
+                          className="flex-1 sm:flex-none"
                         >
                           <Calendar className="h-4 w-4 mr-1" />
-                          Availability
+                          <span className="hidden sm:inline">Availability</span>
+                          <span className="sm:hidden">Slots</span>
                           {isExpanded ? (
                             <ChevronUp className="h-4 w-4 ml-1" />
                           ) : (
                             <ChevronDown className="h-4 w-4 ml-1" />
                           )}
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => startEditVenue(venue)}>
+                        <Button size="icon" variant="ghost" onClick={() => startEditVenue(venue)} className="h-9 w-9">
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive h-9 w-9"
                           onClick={() => handleDeleteVenue(venue.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -599,13 +601,14 @@ function VenueAvailabilityEditor({
   return (
     <div className="space-y-4">
       {/* Day Tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {EVENT_DAYS.map((day) => (
           <Button
             key={day.date}
             variant={selectedDay === day.date ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSelectedDay(day.date)}
+            className="whitespace-nowrap flex-shrink-0"
           >
             {day.label}
           </Button>
@@ -623,25 +626,25 @@ function VenueAvailabilityEditor({
             <div
               key={slot.id}
               className={cn(
-                'flex items-center justify-between p-3 rounded-lg border',
+                'flex items-center justify-between p-3 rounded-lg border gap-2',
                 slot.is_break ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800' : 'bg-muted/30'
               )}
             >
-              <div className="flex items-center gap-3">
-                <div className="text-sm font-mono">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap flex-1 min-w-0">
+                <div className="text-sm font-mono whitespace-nowrap">
                   {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                 </div>
                 <Badge variant={slot.is_break ? 'secondary' : 'outline'} className="text-xs">
                   {slot.is_break ? 'Break' : slot.slot_type || 'session'}
                 </Badge>
                 {slot.label && (
-                  <span className="text-sm text-muted-foreground">{slot.label}</span>
+                  <span className="text-sm text-muted-foreground truncate">{slot.label}</span>
                 )}
               </div>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 text-destructive hover:text-destructive"
+                className="h-9 w-9 flex-shrink-0 text-destructive hover:text-destructive"
                 onClick={() => onDeleteSlot(slot.id)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -655,21 +658,23 @@ function VenueAvailabilityEditor({
       {showAddForm ? (
         <Card className="border-dashed">
           <CardContent className="p-4 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-4">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
               <div className="space-y-2">
-                <label className="text-xs font-medium">Start Time</label>
+                <label className="text-xs font-medium">Start</label>
                 <Input
                   type="time"
                   value={newStartTime}
                   onChange={(e) => setNewStartTime(e.target.value)}
+                  className="min-h-[44px]"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium">End Time</label>
+                <label className="text-xs font-medium">End</label>
                 <Input
                   type="time"
                   value={newEndTime}
                   onChange={(e) => setNewEndTime(e.target.value)}
+                  className="min-h-[44px]"
                 />
               </div>
               <div className="space-y-2">
@@ -680,31 +685,32 @@ function VenueAvailabilityEditor({
                     setNewSlotType(e.target.value)
                     setNewIsBreak(e.target.value === 'break')
                   }}
-                  className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                  className="w-full min-h-[44px] rounded-md border bg-background px-3 text-sm"
                 >
                   <option value="session">Session</option>
                   <option value="unconference">Unconference</option>
-                  <option value="track">Track Reserved</option>
+                  <option value="track">Track</option>
                   <option value="break">Break</option>
                   <option value="checkin">Check-in</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium">Label (optional)</label>
+                <label className="text-xs font-medium">Label</label>
                 <Input
-                  placeholder="e.g., Opening Keynote"
+                  placeholder="Optional"
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
+                  className="min-h-[44px]"
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="outline" onClick={() => setShowAddForm(false)}>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setShowAddForm(false)} className="flex-1 sm:flex-none">
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleAdd}>
+              <Button size="sm" onClick={handleAdd} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 mr-1" />
-                Add Slot
+                Add
               </Button>
             </div>
           </CardContent>
@@ -712,7 +718,8 @@ function VenueAvailabilityEditor({
       ) : (
         <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)} className="w-full">
           <Plus className="h-4 w-4 mr-2" />
-          Add Time Slot for {EVENT_DAYS.find((d) => d.date === selectedDay)?.label}
+          <span className="hidden sm:inline">Add Time Slot for {EVENT_DAYS.find((d) => d.date === selectedDay)?.label}</span>
+          <span className="sm:hidden">Add Slot</span>
         </Button>
       )}
     </div>

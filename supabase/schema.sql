@@ -21,6 +21,7 @@ CREATE TABLE profiles (
   affiliation TEXT,
   building TEXT,
   telegram TEXT,
+  ens TEXT,
   interests TEXT[],
   is_admin BOOLEAN DEFAULT FALSE,
   onboarding_completed BOOLEAN DEFAULT FALSE,

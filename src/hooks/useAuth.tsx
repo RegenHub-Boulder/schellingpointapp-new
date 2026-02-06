@@ -12,6 +12,7 @@ interface Profile {
   affiliation: string | null
   building: string | null
   telegram: string | null
+  ens: string | null
   interests: string[] | null
   is_admin: boolean
   onboarding_completed: boolean

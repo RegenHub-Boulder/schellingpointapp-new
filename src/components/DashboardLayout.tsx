@@ -194,7 +194,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Navigation Tabs */}
       <div className="border-b bg-background">
         <div className="container mx-auto px-4">
-          <nav className="flex items-center gap-1 overflow-x-auto py-2 -mb-px">
+          <nav className="flex items-center gap-1 py-2 -mb-px">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -203,19 +203,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-2 px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-md whitespace-nowrap transition-colors',
+                    'flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 min-h-[44px] min-w-[44px] text-sm font-medium rounded-md whitespace-nowrap transition-colors',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">{item.label}</span>
                 </Link>
               )
             })}
-
-            <div className="flex-1" />
 
             {actionItems.map((item) => {
               const Icon = item.icon
@@ -223,9 +221,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-2 px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  className="flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 min-h-[44px] min-w-[44px] text-sm font-medium rounded-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors ml-auto sm:ml-0"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">{item.label}</span>
                 </Link>
               )

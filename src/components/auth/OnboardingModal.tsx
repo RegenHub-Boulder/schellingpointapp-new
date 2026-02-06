@@ -7,6 +7,7 @@ import {
   Rocket,
   Hash,
   Send,
+  Hexagon,
   Mail,
   Plus,
   X,
@@ -70,6 +71,7 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
   const [affiliation, setAffiliation] = React.useState('')
   const [building, setBuilding] = React.useState('')
   const [telegram, setTelegram] = React.useState('')
+  const [ens, setEns] = React.useState('')
   const [interests, setInterests] = React.useState<string[]>([])
   const [customInterest, setCustomInterest] = React.useState('')
 
@@ -120,6 +122,7 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
       affiliation: affiliation || null,
       building: building || null,
       telegram: telegram || null,
+      ens: ens || null,
       interests: interests.length > 0 ? interests : null,
       onboarding_completed: true,
     }
@@ -318,6 +321,18 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
                   placeholder="@username"
                   value={telegram}
                   onChange={(e) => setTelegram(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Hexagon className="h-4 w-4" />
+                  ENS Name <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <Input
+                  placeholder="yourname.eth"
+                  value={ens}
+                  onChange={(e) => setEns(e.target.value)}
                 />
               </div>
 

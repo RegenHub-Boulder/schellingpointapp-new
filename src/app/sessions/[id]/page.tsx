@@ -21,11 +21,14 @@ import {
   Plus,
   Minus,
   ExternalLink,
+  Pencil,
+  Hexagon,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { EditSessionModal } from '@/components/EditSessionModal'
 import { useAuth } from '@/hooks/useAuth'
 import { votesToCredits } from '@/lib/utils'
 
@@ -78,6 +81,7 @@ export default function SessionDetailPage() {
   const [showShareToast, setShowShareToast] = React.useState(false)
   const [showCalendarMenu, setShowCalendarMenu] = React.useState(false)
   const [showHostCard, setShowHostCard] = React.useState(false)
+  const [showEditModal, setShowEditModal] = React.useState(false)
   const calendarMenuRef = React.useRef<HTMLDivElement>(null)
   const hostCardRef = React.useRef<HTMLDivElement>(null)
 
@@ -110,7 +114,7 @@ export default function SessionDetailPage() {
     const fetchSession = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,interests)`,
+          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -255,7 +259,7 @@ export default function SessionDetailPage() {
 
       // Refresh session to get updated vote counts
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,interests)`,
+        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -609,6 +613,19 @@ export default function SessionDetailPage() {
                                 </a>
                               )}
 
+                              {/* ENS link */}
+                              {session.host?.ens && (
+                                <a
+                                  href={`https://app.ens.domains/${session.host.ens}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mt-1"
+                                >
+                                  <Hexagon className="h-3.5 w-3.5" />
+                                  {session.host.ens}
+                                </a>
+                              )}
+
                               {/* View profile link */}
                               {session.host?.id && (
                                 <Link
@@ -643,6 +660,17 @@ export default function SessionDetailPage() {
                 </div>
 
                 <div className="flex gap-2">
+                  {/* Edit button - show for session host or admin */}
+                  {user && (session.host_id === user.id || profile?.is_admin) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowEditModal(true)}
+                      title="Edit session"
+                    >
+                      <Pencil className="h-5 w-5" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -859,6 +887,17 @@ export default function SessionDetailPage() {
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
+                {/* Edit button for session host or admin */}
+                {user && (session.host_id === user.id || profile?.is_admin) && (
+                  <Button
+                    className="w-full justify-start"
+                    variant="outline"
+                    onClick={() => setShowEditModal(true)}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Session
+                  </Button>
+                )}
                 <Button
                   className="w-full justify-start"
                   variant={isFavorited ? "default" : "outline"}
@@ -909,6 +948,39 @@ export default function SessionDetailPage() {
               <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm animate-in fade-in slide-in-from-bottom-2">
                 Link copied to clipboard!
               </div>
+            )}
+
+            {/* Edit Session Modal */}
+            {session && (
+              <EditSessionModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                session={{
+                  id: session.id,
+                  title: session.title,
+                  description: session.description,
+                  format: session.format,
+                  topic_tags: session.topic_tags,
+                }}
+                onSave={async () => {
+                  // Refresh session data
+                  const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
+                    {
+                      headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                      },
+                    }
+                  )
+                  if (response.ok) {
+                    const data = await response.json()
+                    if (data.length > 0) {
+                      setSession(data[0])
+                    }
+                  }
+                }}
+              />
             )}
 
             {/* Stats Card */}

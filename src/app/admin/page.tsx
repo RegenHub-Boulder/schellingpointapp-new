@@ -305,7 +305,7 @@ export default function AdminPage() {
       {/* Header */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-4">
               <Link
                 href="/sessions"
@@ -317,16 +317,18 @@ export default function AdminPage() {
               <h1 className="font-bold text-lg">Admin Dashboard</h1>
             </div>
             <div className="flex gap-2">
-              <Button asChild>
+              <Button asChild size="sm" className="flex-1 sm:flex-none">
                 <Link href="/admin/schedule">
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Schedule Builder
+                  <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Schedule Builder</span>
+                  <span className="sm:hidden">Schedule</span>
                 </Link>
               </Button>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild size="sm" className="flex-1 sm:flex-none">
                 <Link href="/admin/setup">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Event Setup
+                  <Settings className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Event Setup</span>
+                  <span className="sm:hidden">Setup</span>
                 </Link>
               </Button>
             </div>
@@ -337,11 +339,11 @@ export default function AdminPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           {/* Tabs */}
-          <div className="flex gap-2 border-b">
+          <div className="flex gap-1 sm:gap-2 border-b overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             <button
               onClick={() => setActiveTab('pending')}
               className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                 activeTab === 'pending'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -352,7 +354,7 @@ export default function AdminPage() {
             <button
               onClick={() => setActiveTab('approved')}
               className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                 activeTab === 'approved'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -363,7 +365,7 @@ export default function AdminPage() {
             <button
               onClick={() => setActiveTab('scheduled')}
               className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                 activeTab === 'scheduled'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -458,10 +460,10 @@ function SessionAdminCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
+      <CardContent className="p-4 sm:p-5">
+        <div className="space-y-3">
           <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="secondary" className="capitalize">
                 {session.format}
               </Badge>
@@ -484,12 +486,12 @@ function SessionAdminCard({
               </div>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={onReject}>
+          <div className="flex gap-2 pt-2 border-t">
+            <Button size="sm" variant="outline" onClick={onReject} className="flex-1 sm:flex-none">
               <X className="h-4 w-4 mr-1" />
               Reject
             </Button>
-            <Button size="sm" onClick={onApprove}>
+            <Button size="sm" onClick={onApprove} className="flex-1 sm:flex-none">
               <Check className="h-4 w-4 mr-1" />
               Approve
             </Button>
@@ -527,11 +529,11 @@ function SessionScheduleCard({
 
   return (
     <Card>
-      <CardContent className="p-5">
+      <CardContent className="p-4 sm:p-5">
         <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
             <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="secondary" className="capitalize">
                   {session.format}
                 </Badge>
@@ -549,6 +551,7 @@ function SessionScheduleCard({
               size="sm"
               variant={showScheduler ? 'secondary' : 'default'}
               onClick={() => setShowScheduler(!showScheduler)}
+              className="w-full sm:w-auto"
             >
               <Calendar className="h-4 w-4 mr-1" />
               Schedule
@@ -560,7 +563,7 @@ function SessionScheduleCard({
 
           {showScheduler && (
             <div className="pt-4 border-t space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
@@ -569,7 +572,7 @@ function SessionScheduleCard({
                   <select
                     value={selectedVenue}
                     onChange={(e) => setSelectedVenue(e.target.value)}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-md border bg-background px-3 py-2.5 text-sm min-h-[44px]"
                   >
                     <option value="">Select venue...</option>
                     {venues.map((venue) => (
@@ -587,7 +590,7 @@ function SessionScheduleCard({
                   <select
                     value={selectedTimeSlot}
                     onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-md border bg-background px-3 py-2.5 text-sm min-h-[44px]"
                   >
                     <option value="">Select time...</option>
                     {timeSlots.map((slot) => (
@@ -601,7 +604,7 @@ function SessionScheduleCard({
               <Button
                 onClick={handleSchedule}
                 disabled={!selectedVenue || !selectedTimeSlot}
-                className="w-full sm:w-auto"
+                className="w-full"
               >
                 Confirm Schedule
               </Button>
@@ -623,10 +626,10 @@ function ScheduledSessionCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
+      <CardContent className="p-4 sm:p-5">
+        <div className="space-y-3">
           <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="secondary" className="capitalize">
                 {session.format}
               </Badge>
@@ -637,22 +640,22 @@ function ScheduledSessionCard({
             {session.host_name && (
               <p className="text-sm text-muted-foreground">by {session.host_name}</p>
             )}
-            <div className="flex items-center gap-4 text-sm bg-muted/50 rounded-lg p-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm bg-muted/50 rounded-lg p-3">
               {session.venue && (
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-primary" />
+                  <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
                   <span>{session.venue.name}</span>
                 </div>
               )}
               {session.time_slot && (
                 <div className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-primary" />
+                  <Clock className="h-4 w-4 text-primary flex-shrink-0" />
                   <span>{session.time_slot.label}</span>
                 </div>
               )}
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={onUnschedule}>
+          <Button size="sm" variant="outline" onClick={onUnschedule} className="w-full sm:w-auto">
             Unschedule
           </Button>
         </div>

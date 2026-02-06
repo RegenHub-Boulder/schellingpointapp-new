@@ -156,14 +156,14 @@ export default function DashboardPage() {
   const topSessions = React.useMemo(() => {
     return [...sessions]
       .sort((a, b) => (b.total_votes || 0) - (a.total_votes || 0))
-      .slice(0, 5)
+      .slice(0, 15)
   }, [sessions])
 
   // Get recently proposed sessions
   const recentSessions = React.useMemo(() => {
     return [...sessions]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 5)
+      .slice(0, 15)
   }, [sessions])
 
   // Get sessions user voted for
@@ -319,7 +319,7 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {topSessions.map((session, index) => (
                   <Link
                     key={session.id}
@@ -372,7 +372,7 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {recentSessions.map((session) => (
                   <Link
                     key={session.id}

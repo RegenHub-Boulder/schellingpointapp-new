@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -99,6 +101,7 @@ export default function AdminSchedulePage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedDay, setSelectedDay] = React.useState(EVENT_DAYS[0].date)
   const [draggedSession, setDraggedSession] = React.useState<Session | null>(null)
+  const [showSidebar, setShowSidebar] = React.useState(true)
 
   // Redirect if not admin
   React.useEffect(() => {
@@ -292,14 +295,27 @@ export default function AdminSchedulePage() {
 
       <div className="flex h-[calc(100vh-65px)]">
         {/* Session Tray - Left Sidebar */}
-        <div className="w-80 border-r bg-muted/30 flex flex-col">
-          <div className="p-4 border-b bg-background">
-            <h2 className="font-semibold text-sm">Unscheduled Sessions</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Drag sessions to the schedule grid
-            </p>
+        <div className={cn(
+          "border-r bg-muted/30 flex flex-col transition-all duration-200",
+          showSidebar ? "w-72 sm:w-80" : "w-0 overflow-hidden"
+        )}>
+          <div className="p-3 sm:p-4 border-b bg-background flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-semibold text-sm">Unscheduled</h2>
+              <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
+                Drag sessions to schedule
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-shrink-0"
+              onClick={() => setShowSidebar(false)}
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2">
             {unscheduledSessions.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
                 All approved sessions have been scheduled
@@ -320,17 +336,38 @@ export default function AdminSchedulePage() {
         {/* Main Schedule Grid */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Day Tabs */}
-          <div className="flex items-center gap-2 p-4 border-b bg-background">
+          <div className="flex items-center gap-2 p-3 sm:p-4 border-b bg-background overflow-x-auto">
+            {!showSidebar && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSidebar(true)}
+                className="flex-shrink-0"
+              >
+                <PanelLeft className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Sessions</span>
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {unscheduledSessions.length}
+                </Badge>
+              </Button>
+            )}
             {EVENT_DAYS.map((day) => (
               <Button
                 key={day.date}
                 variant={selectedDay === day.date ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSelectedDay(day.date)}
+                className="whitespace-nowrap flex-shrink-0"
               >
-                {day.label}
+                <span className="hidden sm:inline">{day.label}</span>
+                <span className="sm:hidden">{day.label.split(' ')[0]}</span>
               </Button>
             ))}
+          </div>
+
+          {/* Mobile hint */}
+          <div className="sm:hidden px-3 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-700 dark:text-amber-400">
+            Scroll horizontally to view full schedule. Best viewed on desktop.
           </div>
 
           {/* Grid */}

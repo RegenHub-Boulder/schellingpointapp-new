@@ -7,6 +7,7 @@ import {
   Building2,
   Rocket,
   Send,
+  Hexagon,
   Hash,
   Save,
   X,
@@ -67,6 +68,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [affiliation, setAffiliation] = React.useState('')
   const [building, setBuilding] = React.useState('')
   const [telegram, setTelegram] = React.useState('')
+  const [ens, setEns] = React.useState('')
   const [avatarUrl, setAvatarUrl] = React.useState('')
   const [interests, setInterests] = React.useState<string[]>([])
   const [newInterest, setNewInterest] = React.useState('')
@@ -118,6 +120,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setAffiliation(profile.affiliation || '')
       setBuilding(profile.building || '')
       setTelegram(profile.telegram || '')
+      setEns(profile.ens || '')
       setAvatarUrl(profile.avatar_url || '')
       setInterests(profile.interests || [])
       setSaveMessage(null)
@@ -235,6 +238,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             affiliation: affiliation.trim() || null,
             building: building.trim() || null,
             telegram: telegram.trim() || null,
+            ens: ens.trim() || null,
             avatar_url: avatarUrl.trim() || null,
             interests: interests.length > 0 ? interests : null,
           }),
@@ -380,6 +384,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               placeholder="@username"
               value={telegram}
               onChange={(e) => setTelegram(e.target.value)}
+            />
+          </div>
+
+          {/* ENS */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Hexagon className="h-4 w-4 text-muted-foreground" />
+              ENS Name
+            </label>
+            <Input
+              placeholder="yourname.eth"
+              value={ens}
+              onChange={(e) => setEns(e.target.value)}
             />
           </div>
 

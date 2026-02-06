@@ -12,6 +12,7 @@ import {
   Building2,
   Rocket,
   Send,
+  Hexagon,
   X,
   Hash,
   User,
@@ -36,6 +37,7 @@ interface Participant {
   affiliation: string | null
   building: string | null
   telegram: string | null
+  ens: string | null
   interests: string[] | null
   is_admin: boolean
 }
@@ -458,6 +460,19 @@ function ProfileModal({
                   className="text-primary hover:underline"
                 >
                   {participant.telegram}
+                </a>
+              </div>
+            )}
+            {participant.ens && (
+              <div className="flex items-center gap-2 text-sm">
+                <Hexagon className="h-4 w-4 text-muted-foreground" />
+                <a
+                  href={`https://app.ens.domains/${participant.ens}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {participant.ens}
                 </a>
               </div>
             )}

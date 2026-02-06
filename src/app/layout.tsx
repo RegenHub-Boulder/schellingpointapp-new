@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} min-h-screen bg-background antialiased`}>
+    <html lang="en" className="dark overflow-x-hidden">
+      <body className={`${inter.className} min-h-screen bg-background antialiased overflow-x-hidden`}>
         <AuthProvider>
           {children}
         </AuthProvider>
