@@ -269,38 +269,38 @@ export default function DashboardPage() {
         {/* User Stats (if logged in) */}
         {user && (
           <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
+                  <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Your Voting Activity
                 </h3>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="text-xs sm:text-sm">
                   <Link href="/my-votes">View Details</Link>
                 </Button>
               </div>
-              <div className="grid gap-6 md:grid-cols-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                 <div>
-                  <p className="text-3xl font-bold text-primary">{Object.keys(userVotes).length}</p>
-                  <p className="text-sm text-muted-foreground">Sessions Voted</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">{Object.keys(userVotes).length}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Sessions Voted</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">
+                  <p className="text-2xl sm:text-3xl font-bold">
                     {Object.values(userVotes).reduce((sum, v) => sum + v, 0)}
                   </p>
-                  <p className="text-sm text-muted-foreground">Total Votes Cast</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Votes Cast</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">{creditsSpent}</p>
-                  <p className="text-sm text-muted-foreground">Credits Used</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{creditsSpent}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Credits Used</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-green-500">{TOTAL_CREDITS - creditsSpent}</p>
-                  <p className="text-sm text-muted-foreground">Credits Remaining</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-green-500">{TOTAL_CREDITS - creditsSpent}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Credits Remaining</p>
                 </div>
               </div>
               <div className="mt-4">
-                <div className="flex justify-between text-sm mb-1">
+                <div className="flex justify-between text-xs sm:text-sm mb-1">
                   <span className="text-muted-foreground">Credit Usage</span>
                   <span className="font-medium">{creditsSpent}/{TOTAL_CREDITS}</span>
                 </div>
