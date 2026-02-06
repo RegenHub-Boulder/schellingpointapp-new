@@ -75,6 +75,23 @@ export default function SessionDetailPage() {
   const [userVotes, setUserVotes] = React.useState(0)
   const [isFavorited, setIsFavorited] = React.useState(false)
   const [allUserVotes, setAllUserVotes] = React.useState<Record<string, number>>({})
+  const [showShareToast, setShowShareToast] = React.useState(false)
+  const [showCalendarMenu, setShowCalendarMenu] = React.useState(false)
+  const calendarMenuRef = React.useRef<HTMLDivElement>(null)
+
+  // Close calendar menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarMenuRef.current && !calendarMenuRef.current.contains(event.target as Node)) {
+        setShowCalendarMenu(false)
+      }
+    }
+
+    if (showCalendarMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCalendarMenu])
 
   // Calculate credits spent
   const creditsSpent = React.useMemo(() => {
@@ -306,6 +323,123 @@ export default function SessionDetailPage() {
     }
   }
 
+  // Handle share
+  const handleShare = async () => {
+    const shareUrl = window.location.href
+    const shareTitle = session?.title || 'Check out this session'
+    const shareText = session?.description
+      ? `${shareTitle} - ${session.description.substring(0, 100)}...`
+      : shareTitle
+
+    // Try Web Share API first (mobile and some desktop browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        })
+        return
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name === 'AbortError') return
+      }
+    }
+
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShowShareToast(true)
+      setTimeout(() => setShowShareToast(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  // Generate calendar event data
+  const getCalendarEventData = () => {
+    if (!session?.time_slot) return null
+
+    const startDate = new Date(session.time_slot.start_time)
+    const endDate = new Date(session.time_slot.end_time)
+    const title = session.title
+    const description = [
+      session.description || '',
+      '',
+      `Format: ${session.format}`,
+      session.host_name ? `Host: ${session.host_name}` : '',
+      '',
+      `View session: ${window.location.href}`,
+    ].filter(Boolean).join('\n')
+    const location = session.venue?.name || session.custom_location || 'EthBoulder'
+
+    return { startDate, endDate, title, description, location }
+  }
+
+  // Add to Google Calendar
+  const handleAddToGoogleCalendar = () => {
+    const event = getCalendarEventData()
+    if (!event) return
+
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/-|:|\.\d{3}/g, '')
+    }
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: event.title,
+      dates: `${formatDate(event.startDate)}/${formatDate(event.endDate)}`,
+      details: event.description,
+      location: event.location,
+    })
+
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank')
+    setShowCalendarMenu(false)
+  }
+
+  // Download ICS file (works with Apple Calendar, Outlook, etc.)
+  const handleDownloadICS = () => {
+    const event = getCalendarEventData()
+    if (!event) return
+
+    const formatICSDate = (date: Date) => {
+      return date.toISOString().replace(/-|:|\.\d{3}/g, '').slice(0, -1) + 'Z'
+    }
+
+    const escapeICS = (str: string) => {
+      return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+    }
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SchellingPoint//Session//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `DTSTART:${formatICSDate(event.startDate)}`,
+      `DTEND:${formatICSDate(event.endDate)}`,
+      `SUMMARY:${escapeICS(event.title)}`,
+      `DESCRIPTION:${escapeICS(event.description)}`,
+      `LOCATION:${escapeICS(event.location)}`,
+      `UID:${session.id}@schellingpoint.app`,
+      `DTSTAMP:${formatICSDate(new Date())}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n')
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${session.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    setShowCalendarMenu(false)
+  }
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -387,7 +521,7 @@ export default function SessionDetailPage() {
                   >
                     <Heart className={isFavorited ? 'fill-current' : ''} />
                   </Button>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={handleShare}>
                     <Share2 className="h-5 w-5" />
                   </Button>
                 </div>
@@ -603,18 +737,49 @@ export default function SessionDetailPage() {
                   <Heart className={`h-4 w-4 mr-2 ${isFavorited ? 'fill-current' : ''}`} />
                   {isFavorited ? 'Saved to My Schedule' : 'Add to My Schedule'}
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handleShare}>
                   <Share2 className="h-4 w-4 mr-2" />
                   Share Session
                 </Button>
                 {session.time_slot && (
-                  <Button className="w-full justify-start" variant="outline">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Add to Calendar
-                  </Button>
+                  <div className="relative" ref={calendarMenuRef}>
+                    <Button
+                      className="w-full justify-start"
+                      variant="outline"
+                      onClick={() => setShowCalendarMenu(!showCalendarMenu)}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Add to Calendar
+                    </Button>
+                    {showCalendarMenu && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-10 py-1">
+                        <button
+                          className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
+                          onClick={handleAddToGoogleCalendar}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Google Calendar
+                        </button>
+                        <button
+                          className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
+                          onClick={handleDownloadICS}
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Download .ics (Apple, Outlook)
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </Card>
+
+            {/* Share Toast */}
+            {showShareToast && (
+              <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm animate-in fade-in slide-in-from-bottom-2">
+                Link copied to clipboard!
+              </div>
+            )}
 
             {/* Stats Card */}
             <Card className="p-6 bg-muted/30">
