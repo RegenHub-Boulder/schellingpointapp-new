@@ -150,31 +150,33 @@ export default function MyVotesPage() {
             {votes
               .sort((a, b) => b.vote_count - a.vote_count)
               .map((vote) => (
-                <Card key={vote.session_id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="secondary" className="capitalize text-xs">
-                            {vote.session.format}
-                          </Badge>
+                <Link key={vote.session_id} href={`/sessions/${vote.session.id}`}>
+                  <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="secondary" className="capitalize text-xs">
+                              {vote.session.format}
+                            </Badge>
+                          </div>
+                          <h3 className="font-medium truncate">{vote.session.title}</h3>
+                          {vote.session.host_name && (
+                            <p className="text-sm text-muted-foreground">
+                              by {vote.session.host_name}
+                            </p>
+                          )}
                         </div>
-                        <h3 className="font-medium truncate">{vote.session.title}</h3>
-                        {vote.session.host_name && (
-                          <p className="text-sm text-muted-foreground">
-                            by {vote.session.host_name}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">{vote.vote_count}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {vote.credits_spent} credits
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-primary">{vote.vote_count}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {vote.credits_spent} credits
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
           </div>
         )}

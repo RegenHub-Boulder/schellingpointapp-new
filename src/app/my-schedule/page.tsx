@@ -167,10 +167,10 @@ export default function MySchedulePage() {
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2">
                   {sessions.map((session) => (
-                    <Card key={session.id}>
+                    <Card key={session.id} className="hover:border-primary/50 hover:shadow-md transition-all">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
+                          <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0 cursor-pointer">
                             <div className="flex items-center gap-2 mb-1">
                               <Badge variant="secondary" className="text-xs capitalize">
                                 {session.format}
@@ -190,7 +190,7 @@ export default function MySchedulePage() {
                                 📍 {session.venue.name}
                               </p>
                             )}
-                          </div>
+                          </Link>
                           <button
                             onClick={() => handleRemoveFavorite(session.id)}
                             className="p-2 rounded-full text-red-500 bg-red-500/10 hover:bg-red-500/20"
@@ -213,10 +213,10 @@ export default function MySchedulePage() {
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2">
                   {unscheduledSessions.map((session) => (
-                    <Card key={session.id} className="border-dashed">
+                    <Card key={session.id} className="border-dashed hover:border-primary/50 hover:shadow-md transition-all">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
+                          <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0 cursor-pointer">
                             <div className="flex items-center gap-2 mb-1">
                               <Badge variant="outline" className="text-xs capitalize">
                                 {session.format}
@@ -231,7 +231,7 @@ export default function MySchedulePage() {
                                 by {session.host_name}
                               </p>
                             )}
-                          </div>
+                          </Link>
                           <button
                             onClick={() => handleRemoveFavorite(session.id)}
                             className="p-2 rounded-full text-red-500 bg-red-500/10 hover:bg-red-500/20"

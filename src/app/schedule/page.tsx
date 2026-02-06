@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import { Loader2, Calendar, MapPin, Clock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -136,32 +137,34 @@ export default function SchedulePage() {
 
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {slotSessions.map((session) => (
-                      <Card key={session.id}>
-                        <CardContent className="p-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="capitalize text-xs">
-                                {session.format}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {session.duration} min
-                              </span>
-                            </div>
-                            <h3 className="font-medium">{session.title}</h3>
-                            {session.host_name && (
-                              <p className="text-sm text-muted-foreground">
-                                by {session.host_name}
-                              </p>
-                            )}
-                            {session.venue && (
-                              <div className="flex items-center gap-1.5 text-sm text-primary">
-                                <MapPin className="h-4 w-4" />
-                                <span>{session.venue.name}</span>
+                      <Link key={session.id} href={`/sessions/${session.id}`}>
+                        <Card className="h-full hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
+                          <CardContent className="p-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="capitalize text-xs">
+                                  {session.format}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {session.duration} min
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                              <h3 className="font-medium">{session.title}</h3>
+                              {session.host_name && (
+                                <p className="text-sm text-muted-foreground">
+                                  by {session.host_name}
+                                </p>
+                              )}
+                              {session.venue && (
+                                <div className="flex items-center gap-1.5 text-sm text-primary">
+                                  <MapPin className="h-4 w-4" />
+                                  <span>{session.venue.name}</span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 </div>
