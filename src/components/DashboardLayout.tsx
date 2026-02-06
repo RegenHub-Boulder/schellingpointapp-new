@@ -239,6 +239,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {children}
       </main>
 
+      {/* Footer */}
+      <footer className="border-t mt-auto py-4">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-muted-foreground/50 text-xs">
+            Made with &lt;3 at{' '}
+            <a
+              href="https://regenhub.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary transition-colors"
+            >
+              The Regen Hub
+            </a>
+          </p>
+        </div>
+      </footer>
+
       {/* Onboarding Modal */}
       {showOnboarding && user && (
         <OnboardingModal

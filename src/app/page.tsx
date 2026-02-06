@@ -225,6 +225,17 @@ export default function LandingPage() {
           <p className="text-muted-foreground/60 text-xs mt-2">
             Schelling Point — Coordination is the killer app
           </p>
+          <p className="text-muted-foreground/40 text-xs mt-6">
+            Made with &lt;3 at{' '}
+            <a
+              href="https://regenhub.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary transition-colors"
+            >
+              The Regen Hub
+            </a>
+          </p>
         </div>
       </footer>
     </div>
