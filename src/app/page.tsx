@@ -14,7 +14,7 @@ export default function LandingPage() {
 
   const handleEnter = () => {
     if (user) {
-      router.push('/sessions')
+      router.push('/dashboard')
     } else {
       router.push('/login')
     }

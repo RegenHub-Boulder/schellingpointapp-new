@@ -23,7 +23,7 @@ function LoginContent() {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user && !authLoading) {
-      router.push('/sessions')
+      router.push('/dashboard')
     }
   }, [user, authLoading, router])
 
