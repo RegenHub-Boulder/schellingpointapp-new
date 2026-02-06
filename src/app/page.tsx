@@ -80,9 +80,9 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="container mx-auto px-4 pt-16 pb-20 text-center relative">
         {/* EthBoulder Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
+        <div className="inline-flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-4 py-2 rounded-2xl sm:rounded-full bg-primary/10 border border-primary/20 mb-8">
           <span className="text-primary text-sm font-medium">Fork The Frontier</span>
-          <span className="text-muted-foreground">•</span>
+          <span className="text-muted-foreground hidden sm:inline">•</span>
           <span className="text-sm text-muted-foreground">Feb 13-15, 2026 • Boulder, CO</span>
         </div>
 
