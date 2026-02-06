@@ -193,6 +193,8 @@ CREATE POLICY "Authenticated users can create sessions" ON sessions FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "Hosts can update own pending sessions" ON sessions FOR UPDATE
   USING (host_id = auth.uid() AND status = 'pending');
+CREATE POLICY "Hosts can delete own sessions" ON sessions FOR DELETE
+  USING (host_id = auth.uid());
 CREATE POLICY "Admins can manage all sessions" ON sessions FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
 );

@@ -440,19 +440,19 @@ function ProfileModal({
           )}
 
           {/* Contact Info */}
-          <div className="space-y-2 pt-4 border-t">
+          <div className="flex flex-col gap-2 pt-4 border-t">
             <div className="flex items-center gap-2 text-sm">
-              <Mail className="h-4 w-4 text-muted-foreground" />
+              <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <a
                 href={`mailto:${participant.email}`}
-                className="text-primary hover:underline"
+                className="text-primary hover:underline break-all"
               >
                 {participant.email}
               </a>
             </div>
             {participant.telegram && (
               <div className="flex items-center gap-2 text-sm">
-                <Send className="h-4 w-4 text-muted-foreground" />
+                <Send className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a
                   href={`https://t.me/${participant.telegram.replace('@', '')}`}
                   target="_blank"
@@ -465,7 +465,7 @@ function ProfileModal({
             )}
             {participant.ens && (
               <div className="flex items-center gap-2 text-sm">
-                <Hexagon className="h-4 w-4 text-muted-foreground" />
+                <Hexagon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a
                   href={`https://app.ens.domains/${participant.ens}`}
                   target="_blank"

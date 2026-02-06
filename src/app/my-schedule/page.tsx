@@ -135,17 +135,7 @@ export default function MySchedulePage() {
     }
   }
 
-  if (authLoading || isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  // Group by time slot
+  // Group by time slot (must be before any conditional returns to maintain hook order)
   const scheduledSessions = favorites.filter((s) => s.time_slot)
   const unscheduledSessions = favorites.filter((s) => !s.time_slot)
 
@@ -185,21 +175,37 @@ export default function MySchedulePage() {
   }, [scheduledSessions, selectedDay])
 
   // Group filtered sessions by time
-  const groupedByTime: Record<string, any[]> = {}
-  filteredScheduledSessions.forEach((session) => {
-    const startTime = formatTime(session.time_slot.start_time)
-    if (!groupedByTime[startTime]) {
-      groupedByTime[startTime] = []
-    }
-    groupedByTime[startTime].push(session)
-  })
+  const groupedByTime: Record<string, any[]> = React.useMemo(() => {
+    const groups: Record<string, any[]> = {}
+    filteredScheduledSessions.forEach((session) => {
+      const startTime = formatTime(session.time_slot.start_time)
+      if (!groups[startTime]) {
+        groups[startTime] = []
+      }
+      groups[startTime].push(session)
+    })
+    return groups
+  }, [filteredScheduledSessions])
 
   // Sort time slots
-  const sortedTimeSlots = Object.keys(groupedByTime).sort((a, b) => {
-    const sessionA = groupedByTime[a][0]
-    const sessionB = groupedByTime[b][0]
-    return new Date(sessionA.time_slot.start_time).getTime() - new Date(sessionB.time_slot.start_time).getTime()
-  })
+  const sortedTimeSlots = React.useMemo(() => {
+    return Object.keys(groupedByTime).sort((a, b) => {
+      const sessionA = groupedByTime[a][0]
+      const sessionB = groupedByTime[b][0]
+      return new Date(sessionA.time_slot.start_time).getTime() - new Date(sessionB.time_slot.start_time).getTime()
+    })
+  }, [groupedByTime])
+
+  // Loading state - AFTER all hooks
+  if (authLoading || isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>

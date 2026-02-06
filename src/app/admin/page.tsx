@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Settings,
   LayoutGrid,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -284,6 +285,30 @@ export default function AdminPage() {
     }
   }
 
+  const handleDelete = async (sessionId: string) => {
+    const token = getAccessToken()
+    if (!token) return
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok || response.status === 204) {
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+      }
+    } catch (err) {
+      console.error('Error deleting session:', err)
+    }
+  }
+
   const pendingSessions = sessions.filter((s) => s.status === 'pending')
   const approvedSessions = sessions.filter((s) => s.status === 'approved')
   const scheduledSessions = sessions.filter((s) => s.status === 'scheduled')
@@ -391,6 +416,7 @@ export default function AdminPage() {
                     session={session}
                     onApprove={() => handleApprove(session.id)}
                     onReject={() => handleReject(session.id)}
+                    onDelete={() => handleDelete(session.id)}
                   />
                 ))
               )}
@@ -416,6 +442,7 @@ export default function AdminPage() {
                     onSchedule={(venueId, timeSlotId) =>
                       handleSchedule(session.id, venueId, timeSlotId)
                     }
+                    onDelete={() => handleDelete(session.id)}
                   />
                 ))
               )}
@@ -437,6 +464,7 @@ export default function AdminPage() {
                     key={session.id}
                     session={session}
                     onUnschedule={() => handleUnschedule(session.id)}
+                    onDelete={() => handleDelete(session.id)}
                   />
                 ))
               )}
@@ -453,11 +481,15 @@ function SessionAdminCard({
   session,
   onApprove,
   onReject,
+  onDelete,
 }: {
   session: Session
   onApprove: () => void
   onReject: () => void
+  onDelete: () => void
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+
   return (
     <Card>
       <CardContent className="p-4 sm:p-5">
@@ -486,7 +518,7 @@ function SessionAdminCard({
               </div>
             )}
           </div>
-          <div className="flex gap-2 pt-2 border-t">
+          <div className="flex gap-2 pt-2 border-t flex-wrap">
             <Button size="sm" variant="outline" onClick={onReject} className="flex-1 sm:flex-none">
               <X className="h-4 w-4 mr-1" />
               Reject
@@ -495,9 +527,56 @@ function SessionAdminCard({
               <Check className="h-4 w-4 mr-1" />
               Approve
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 sm:ml-auto"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </CardContent>
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-card border rounded-xl shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold mb-2">Delete Session?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              "{session.title}" will be permanently deleted.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  onDelete()
+                  setShowDeleteConfirm(false)
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
@@ -508,15 +587,18 @@ function SessionScheduleCard({
   venues,
   timeSlots,
   onSchedule,
+  onDelete,
 }: {
   session: Session
   venues: Venue[]
   timeSlots: TimeSlot[]
   onSchedule: (venueId: string, timeSlotId: string) => void
+  onDelete: () => void
 }) {
   const [selectedVenue, setSelectedVenue] = React.useState('')
   const [selectedTimeSlot, setSelectedTimeSlot] = React.useState('')
   const [showScheduler, setShowScheduler] = React.useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
 
   const handleSchedule = () => {
     if (selectedVenue && selectedTimeSlot) {
@@ -547,18 +629,28 @@ function SessionScheduleCard({
                 <p className="text-sm text-muted-foreground">by {session.host_name}</p>
               )}
             </div>
-            <Button
-              size="sm"
-              variant={showScheduler ? 'secondary' : 'default'}
-              onClick={() => setShowScheduler(!showScheduler)}
-              className="w-full sm:w-auto"
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              Schedule
-              <ChevronDown
-                className={cn('h-4 w-4 ml-1 transition-transform', showScheduler && 'rotate-180')}
-              />
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant={showScheduler ? 'secondary' : 'default'}
+                onClick={() => setShowScheduler(!showScheduler)}
+                className="flex-1 sm:flex-none"
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Schedule
+                <ChevronDown
+                  className={cn('h-4 w-4 ml-1 transition-transform', showScheduler && 'rotate-180')}
+                />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {showScheduler && (
@@ -612,6 +704,45 @@ function SessionScheduleCard({
           )}
         </div>
       </CardContent>
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-card border rounded-xl shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold mb-2">Delete Session?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              "{session.title}" will be permanently deleted.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  onDelete()
+                  setShowDeleteConfirm(false)
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
@@ -620,10 +751,14 @@ function SessionScheduleCard({
 function ScheduledSessionCard({
   session,
   onUnschedule,
+  onDelete,
 }: {
   session: Session
   onUnschedule: () => void
+  onDelete: () => void
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+
   return (
     <Card>
       <CardContent className="p-4 sm:p-5">
@@ -655,11 +790,60 @@ function ScheduledSessionCard({
               )}
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={onUnschedule} className="w-full sm:w-auto">
-            Unschedule
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={onUnschedule} className="flex-1 sm:flex-none">
+              Unschedule
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-card border rounded-xl shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold mb-2">Delete Session?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              "{session.title}" will be permanently deleted.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  onDelete()
+                  setShowDeleteConfirm(false)
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }

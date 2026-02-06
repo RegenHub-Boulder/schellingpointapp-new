@@ -23,6 +23,8 @@ import {
   ExternalLink,
   Pencil,
   Hexagon,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -82,6 +84,8 @@ export default function SessionDetailPage() {
   const [showCalendarMenu, setShowCalendarMenu] = React.useState(false)
   const [showHostCard, setShowHostCard] = React.useState(false)
   const [showEditModal, setShowEditModal] = React.useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const calendarMenuRef = React.useRef<HTMLDivElement>(null)
   const hostCardRef = React.useRef<HTMLDivElement>(null)
 
@@ -362,6 +366,41 @@ export default function SessionDetailPage() {
       setTimeout(() => setShowShareToast(false), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
+    }
+  }
+
+  // Handle delete session
+  const handleDelete = async () => {
+    if (!user) return
+
+    const token = getAccessToken()
+    if (!token) return
+
+    setIsDeleting(true)
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok || response.status === 204) {
+        router.push('/sessions')
+      } else {
+        console.error('Error deleting session:', await response.text())
+        setShowDeleteConfirm(false)
+      }
+    } catch (err) {
+      console.error('Error deleting session:', err)
+      setShowDeleteConfirm(false)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -940,8 +979,74 @@ export default function SessionDetailPage() {
                     )}
                   </div>
                 )}
+                {/* Delete button for session host or admin */}
+                {user && (session.host_id === user.id || profile?.is_admin) && (
+                  <Button
+                    className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Session
+                  </Button>
+                )}
               </div>
             </Card>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                <div
+                  className="w-full max-w-md bg-card border rounded-xl shadow-xl p-6"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 rounded-full bg-destructive/10">
+                      <AlertTriangle className="h-6 w-6 text-destructive" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Delete Session</h3>
+                      <p className="text-sm text-muted-foreground">This action cannot be undone</p>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground mb-6">
+                    Are you sure you want to delete "<span className="font-medium text-foreground">{session.title}</span>"?
+                    All votes and favorites for this session will also be removed.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Share Toast */}
             {showShareToast && (
