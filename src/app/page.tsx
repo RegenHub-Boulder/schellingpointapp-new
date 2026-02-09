@@ -8,6 +8,7 @@ import { Presentation, Vote, Calendar, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
+import { Footer } from '@/components/Footer'
 
 export default function LandingPage() {
   const router = useRouter()
@@ -68,14 +69,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Image
               src="/logo.svg"
-              alt="EthBoulder"
+              alt="Schelling Point"
               width={40}
               height={40}
               className="rounded-lg neon-glow"
             />
-            <div>
-              <span className="font-display font-bold text-lg">Schelling Point</span>
-              <span className="text-xs text-muted-foreground ml-2">by EthBoulder</span>
+            <div className="flex flex-col">
+              <span className="font-display font-bold text-lg leading-tight">Schelling Point</span>
+              <span className="text-xs text-muted-foreground leading-tight">EthBoulder™</span>
             </div>
           </div>
           <Button onClick={handleEnter} loading={isLoading} className="btn-primary-glow">
@@ -207,45 +208,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Giant Footer */}
-      <footer className="relative mt-16 py-16 border-t border-border/30 overflow-hidden group">
-        {/* Hover glow effect */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-          style={{
-            background: 'radial-gradient(closest-side, hsl(82 85% 55% / 0.2), transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-
-        <div className="container mx-auto px-4 text-center relative">
-          {/* Giant EthBoulder text */}
-          <Link href="https://ethboulder.xyz" target="_blank" rel="noopener noreferrer" className="block">
-            <h2 className="font-display text-[12vw] sm:text-[10vw] lg:text-[8vw] leading-none tracking-tighter text-muted-foreground/20 transition-colors duration-300 group-hover:text-primary/40 select-none">
-              <span className="font-extrabold">Eth</span>
-              <span className="font-normal">Boulder</span>
-            </h2>
-          </Link>
-
-          <p className="text-muted-foreground text-sm mt-6">
-            Decentralized & community-governed • February 13-15, 2026
-          </p>
-          <p className="text-muted-foreground/60 text-xs mt-2">
-            Schelling Point — Coordination is the killer app
-          </p>
-          <p className="text-muted-foreground/40 text-xs mt-6">
-            Made with &lt;3 at{' '}
-            <a
-              href="https://regenhub.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
-            >
-              The Regen Hub
-            </a>
-          </p>
-        </div>
-      </footer>
+      {/* Footer */}
+      <Footer className="mt-16" />
     </div>
   )
 }

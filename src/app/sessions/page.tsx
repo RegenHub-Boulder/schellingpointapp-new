@@ -172,18 +172,13 @@ export default function SessionsPage() {
 
   // Handle vote change
   const handleVote = async (sessionId: string, newVoteCount: number) => {
-    console.log('handleVote called:', { sessionId, newVoteCount, userId: user?.id })
-
     if (!user) {
-      console.log('No user, redirecting to login')
       router.push('/login')
       return
     }
 
     const token = getAccessToken()
-    console.log('Token retrieved:', token ? 'yes' : 'no')
     if (!token) {
-      console.log('No token, redirecting to login')
       router.push('/login')
       return
     }
@@ -192,22 +187,28 @@ export default function SessionsPage() {
     const oldCredits = votesToCredits(oldVotes)
     const newCredits = votesToCredits(newVoteCount)
     const creditDiff = newCredits - oldCredits
-
-    console.log('Vote calculation:', { oldVotes, newVoteCount, oldCredits, newCredits, creditDiff })
+    const voteDiff = newVoteCount - oldVotes
 
     // Check if user has enough credits
     if (creditsSpent + creditDiff > TOTAL_CREDITS) {
-      console.log('Not enough credits')
       return
     }
 
-    // Optimistic update
+    // Optimistic update for user votes
     setUserVotes((prev) => ({ ...prev, [sessionId]: newVoteCount }))
+
+    // Optimistic update for session total_votes (in-place, no re-sort)
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, total_votes: Math.max(0, (s.total_votes || 0) + voteDiff) }
+          : s
+      )
+    )
 
     try {
       if (newVoteCount === 0) {
         // Delete vote
-        console.log('Deleting vote...')
         const response = await fetch(
           `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
           {
@@ -218,14 +219,11 @@ export default function SessionsPage() {
             },
           }
         )
-        console.log('Delete response:', response.status, response.statusText)
         if (!response.ok) {
-          const error = await response.text()
-          console.error('Delete failed:', error)
+          throw new Error('Delete failed')
         }
       } else {
-        // Upsert vote - must specify on_conflict for composite unique constraint
-        console.log('Upserting vote...')
+        // Upsert vote
         const response = await fetch(
           `${SUPABASE_URL}/rest/v1/votes?on_conflict=user_id,session_id`,
           {
@@ -244,21 +242,23 @@ export default function SessionsPage() {
             }),
           }
         )
-        console.log('Upsert response:', response.status, response.statusText)
         if (!response.ok) {
-          const error = await response.text()
-          console.error('Upsert failed:', error)
-          throw new Error(error)
+          throw new Error('Upsert failed')
         }
       }
-
-      // Refresh sessions to get updated vote counts
-      console.log('Refreshing sessions...')
-      await refreshSessions()
+      // Note: We no longer call refreshSessions() here to avoid re-sorting
+      // Sessions will refresh on page load or manual refresh
     } catch (err) {
       console.error('Error voting:', err)
-      // Revert on error
+      // Revert both on error
       setUserVotes((prev) => ({ ...prev, [sessionId]: oldVotes }))
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId
+            ? { ...s, total_votes: Math.max(0, (s.total_votes || 0) - voteDiff) }
+            : s
+        )
+      )
     }
   }
 

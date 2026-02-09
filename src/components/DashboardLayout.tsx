@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { CreditBar } from '@/components/CreditBar'
 import { OnboardingModal } from '@/components/auth/OnboardingModal'
 import { SettingsModal } from '@/components/SettingsModal'
+import { Footer } from '@/components/Footer'
 import { useAuth } from '@/hooks/useAuth'
 import { cn, votesToCredits } from '@/lib/utils'
 
@@ -58,28 +59,88 @@ const actionItems = [
   { href: '/propose', label: 'Propose Session', icon: PlusCircle },
 ]
 
+// Cache key for storing votes in sessionStorage
+const VOTES_CACHE_KEY = 'schelling-point-user-votes'
+const VOTES_USER_KEY = 'schelling-point-user-id'
+
+function getCachedVotes(): Record<string, number> | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const cached = sessionStorage.getItem(VOTES_CACHE_KEY)
+    if (cached) {
+      return JSON.parse(cached)
+    }
+  } catch {}
+  return null
+}
+
+function getCachedUserId(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return sessionStorage.getItem(VOTES_USER_KEY)
+  } catch {}
+  return null
+}
+
+function setCachedVotes(userId: string, votes: Record<string, number>) {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(VOTES_CACHE_KEY, JSON.stringify(votes))
+    sessionStorage.setItem(VOTES_USER_KEY, userId)
+  } catch {}
+}
+
+function clearCachedVotes() {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.removeItem(VOTES_CACHE_KEY)
+    sessionStorage.removeItem(VOTES_USER_KEY)
+  } catch {}
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const { user, profile, signOut, needsOnboarding, refreshProfile } = useAuth()
   const [showOnboarding, setShowOnboarding] = React.useState(false)
   const [showSettings, setShowSettings] = React.useState(false)
-  const [userVotes, setUserVotes] = React.useState<Record<string, number>>({})
+
+  // Initialize userVotes from cache immediately to prevent flashing
+  const [userVotes, setUserVotes] = React.useState<Record<string, number>>(() => {
+    const cached = getCachedVotes()
+    return cached || {}
+  })
+  const [votesLoaded, setVotesLoaded] = React.useState(() => {
+    return getCachedVotes() !== null
+  })
 
   // Calculate credits spent from user votes
   const creditsSpent = React.useMemo(() => {
     return Object.values(userVotes).reduce((sum, votes) => sum + votesToCredits(votes), 0)
   }, [userVotes])
 
-  // Fetch user's votes when user changes
+  // Fetch user's votes when user changes, with caching
   React.useEffect(() => {
     if (!user) {
       setUserVotes({})
+      clearCachedVotes()
+      setVotesLoaded(true)
       return
+    }
+
+    // Check if cached data is for the current user
+    const cachedUserId = getCachedUserId()
+    if (cachedUserId !== user.id) {
+      // Different user, clear cache and reset
+      clearCachedVotes()
+      setUserVotes({})
     }
 
     const fetchUserVotes = async () => {
       const token = getAccessToken()
-      if (!token) return
+      if (!token) {
+        setVotesLoaded(true)
+        return
+      }
 
       try {
         const response = await fetch(
@@ -99,9 +160,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             votesMap[v.session_id] = v.vote_count
           })
           setUserVotes(votesMap)
+          setCachedVotes(user.id, votesMap)
         }
       } catch (err) {
         console.error('Error fetching user votes:', err)
+      } finally {
+        setVotesLoaded(true)
       }
     }
 
@@ -121,7 +185,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-10">
         <div className="container mx-auto px-4">
@@ -194,7 +258,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Navigation Tabs */}
       <div className="border-b bg-background">
         <div className="container mx-auto px-4">
-          <nav className="flex items-center gap-1 py-2 -mb-px">
+          <nav className="flex items-center gap-1 py-2 -mb-px overflow-x-auto scrollbar-hide">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -203,7 +267,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 min-h-[44px] min-w-[44px] text-sm font-medium rounded-md whitespace-nowrap transition-colors',
+                    'flex items-center justify-center gap-1.5 px-2 md:px-3 py-2.5 min-h-[44px] min-w-[44px] text-xs md:text-sm font-medium rounded-md whitespace-nowrap transition-colors flex-shrink-0',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -221,7 +285,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 min-h-[44px] min-w-[44px] text-sm font-medium rounded-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors ml-auto sm:ml-0"
+                  className="flex items-center justify-center gap-1.5 px-2 md:px-3 py-2.5 min-h-[44px] min-w-[44px] text-xs md:text-sm font-medium rounded-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex-shrink-0 ml-auto"
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">{item.label}</span>
@@ -238,21 +302,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-auto py-4">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-muted-foreground/50 text-xs">
-            Made with &lt;3 at{' '}
-            <a
-              href="https://regenhub.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
-            >
-              The Regen Hub
-            </a>
-          </p>
-        </div>
-      </footer>
+      <Footer variant="minimal" className="mt-auto" />
 
       {/* Onboarding Modal */}
       {showOnboarding && user && (

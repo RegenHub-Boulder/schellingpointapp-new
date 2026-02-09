@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Sign in to Schelling Point</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0e14; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+
+  <!-- Preview text (hidden) -->
+  <div style="display: none; max-height: 0; overflow: hidden;">
+    Your sign-in code for Schelling Point: {{ .Token }}
+  </div>
+
+  <!-- Wrapper table -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0a0e14;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+
+        <!-- Main container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 480px; background-color: #0d1117; border-radius: 16px; border: 1px solid #1e2a3a; overflow: hidden;">
+
+          <!-- Header with logo -->
+          <tr>
+            <td align="center" style="padding: 40px 40px 24px 40px; background: linear-gradient(180deg, #111820 0%, #0d1117 100%);">
+              <!-- Logo -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="padding-bottom: 16px;">
+                    <img src="https://mvp-self-three.vercel.app/logo.svg" alt="Schelling Point" width="56" height="56" style="display: block; border: 0;">
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
+                      Schelling Point
+                    </h1>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Divider line with glow effect -->
+          <tr>
+            <td style="padding: 0 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="height: 1px; background: linear-gradient(90deg, transparent 0%, #B2FF00 50%, transparent 100%);"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main content -->
+          <tr>
+            <td style="padding: 32px 40px 24px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">
+                      Your Sign-In Code
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 16px 0 24px 0;">
+                    <!-- OTP Code Box -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="background: linear-gradient(135deg, #151c24 0%, #1a2332 100%); border: 2px solid #B2FF00; border-radius: 12px; padding: 20px 40px; box-shadow: 0 0 30px rgba(178, 255, 0, 0.15);">
+                          <span style="font-size: 36px; font-weight: 700; color: #B2FF00; letter-spacing: 8px; font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;">{{ .Token }}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 24px; color: #c9d1d9;">
+                      Enter this code on the sign-in page to access your account. This code expires in <strong style="color: #ffffff;">60 minutes</strong>.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Alternative: Magic Link Button -->
+          <tr>
+            <td style="padding: 0 40px 32px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 16px 0; font-size: 13px; color: #6e7681;">
+                      Or click below to sign in directly
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-radius: 8px; background-color: #B2FF00;">
+                          <a href="{{ .ConfirmationURL }}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; color: #0a0e14; text-decoration: none; border-radius: 8px;">
+                            Sign In to Schelling Point
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Security notice -->
+          <tr>
+            <td style="padding: 0 40px 32px 40px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #161b22; border-radius: 8px; border: 1px solid #21262d;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="vertical-align: top; padding-right: 12px;">
+                          <span style="font-size: 16px;">&#128274;</span>
+                        </td>
+                        <td>
+                          <p style="margin: 0; font-size: 13px; line-height: 20px; color: #8b949e;">
+                            If you didn't request this code, you can safely ignore this email. Someone may have entered your email by mistake.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 40px; background-color: #0a0e14; border-top: 1px solid #1e2a3a;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 8px 0; font-size: 13px; color: #6e7681;">
+                      <strong style="color: #8b949e;">EthBoulder 2026</strong> &nbsp;&#8226;&nbsp; February 13-15 &nbsp;&#8226;&nbsp; Boulder, CO
+                    </p>
+                    <p style="margin: 0; font-size: 12px; color: #484f58;">
+                      Where the Ethereum community comes together
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!-- End main container -->
+
+        <!-- Bottom spacing and link -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 480px;">
+          <tr>
+            <td align="center" style="padding: 24px 20px;">
+              <p style="margin: 0; font-size: 11px; color: #484f58;">
+                Powered by <a href="https://schellingpoint.city" style="color: #6e7681; text-decoration: none;">Schelling Point</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

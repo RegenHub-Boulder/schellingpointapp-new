@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const { user, profile } = useAuth()
 
   const [sessions, setSessions] = React.useState<any[]>([])
+  const [pendingSessions, setPendingSessions] = React.useState<any[]>([])
   const [userVotes, setUserVotes] = React.useState<Record<string, number>>({})
   const [favorites, setFavorites] = React.useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = React.useState(true)
@@ -103,7 +104,10 @@ export default function DashboardPage() {
 
   // Fetch user data
   React.useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setPendingSessions([])
+      return
+    }
 
     const fetchUserData = async () => {
       const token = getAccessToken()
@@ -144,6 +148,22 @@ export default function DashboardPage() {
         if (favResponse.ok) {
           const favData = await favResponse.json()
           setFavorites(new Set(favData.map((f: any) => f.session_id)))
+        }
+
+        // Fetch user's pending sessions
+        const pendingResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/sessions?status=eq.pending&host_id=eq.${user.id}&select=*&order=created_at.desc`,
+          {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (pendingResponse.ok) {
+          const pendingData = await pendingResponse.json()
+          setPendingSessions(pendingData)
         }
       } catch (err) {
         console.error('Error fetching user data:', err)
@@ -310,6 +330,52 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {/* Pending Proposals (only visible to the user who proposed them) */}
+        {user && pendingSessions.length > 0 && (
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-yellow-500" />
+                  My Pending Proposals
+                </CardTitle>
+                <Badge variant="outline" className="text-yellow-600 border-yellow-500/50">
+                  Awaiting Review
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {pendingSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="p-4 rounded-lg border border-yellow-500/20 bg-background/50"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-medium line-clamp-2">
+                        {session.title}
+                      </p>
+                      <Badge variant="secondary" className="capitalize text-xs flex-shrink-0 bg-yellow-500/20 text-yellow-600">
+                        pending
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                      {session.description || 'No description'}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="capitalize">{session.format}</span>
+                      <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Your proposals are being reviewed by admins. Once approved, they'll appear in the sessions list for voting.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Top Sessions */}
@@ -348,11 +414,11 @@ export default function DashboardPage() {
                       <p className="font-medium truncate group-hover:text-primary transition-colors">
                         {session.title}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground truncate">
                         {session.host_name || 'Anonymous'}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <p className="font-semibold text-primary">{session.total_votes || 0}</p>
                       <p className="text-xs text-muted-foreground">votes</p>
                     </div>
@@ -395,13 +461,13 @@ export default function DashboardPage() {
                       <p className="font-medium truncate group-hover:text-primary transition-colors">
                         {session.title}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{session.host_name || 'Anonymous'}</span>
-                        <span>•</span>
-                        <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-hidden">
+                        <span className="truncate">{session.host_name || 'Anonymous'}</span>
+                        <span className="flex-shrink-0">•</span>
+                        <span className="flex-shrink-0">{new Date(session.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="capitalize text-xs">
+                    <Badge variant="secondary" className="capitalize text-xs flex-shrink-0">
                       {session.format}
                     </Badge>
                   </Link>

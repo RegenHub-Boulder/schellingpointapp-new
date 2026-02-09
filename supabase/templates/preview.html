@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Template Preview - Schelling Point</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; font-family: system-ui, sans-serif; padding: 40px 20px; }
+    .preview-nav { max-width: 520px; margin: 0 auto 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .preview-btn { padding: 10px 16px; background: #0d1117; color: #c9d1d9; border: 1px solid #1e2a3a; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .preview-btn:hover { border-color: #B2FF00; color: #fff; }
+    .preview-btn.active { background: #B2FF00; color: #0a0e14; border-color: #B2FF00; font-weight: 600; }
+    .preview-container { max-width: 520px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    iframe { width: 100%; height: 700px; border: none; }
+    .preview-title { max-width: 520px; margin: 0 auto 12px; color: #6e7681; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div class="preview-nav">
+    <button class="preview-btn active" onclick="loadTemplate('magic_link')">Magic Link / OTP</button>
+    <button class="preview-btn" onclick="loadTemplate('confirmation')">Confirmation</button>
+    <button class="preview-btn" onclick="loadTemplate('recovery')">Recovery</button>
+    <button class="preview-btn" onclick="loadTemplate('invite')">Invite</button>
+  </div>
+  <div class="preview-title">Preview (with sample data)</div>
+  <div class="preview-container">
+    <iframe id="preview-frame" src="about:blank"></iframe>
+  </div>
+
+  <script>
+    const templates = {
+      magic_link: `magic_link.html`,
+      confirmation: `confirmation.html`,
+      recovery: `recovery.html`,
+      invite: `invite.html`
+    };
+
+    const sampleData = {
+      Token: '847291',
+      ConfirmationURL: 'https://mvp-self-three.vercel.app/auth/confirm?token=xxx',
+      Email: 'user@example.com',
+      SiteURL: 'https://mvp-self-three.vercel.app'
+    };
+
+    async function loadTemplate(name) {
+      document.querySelectorAll('.preview-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      try {
+        const response = await fetch(templates[name]);
+        let html = await response.text();
+
+        // Replace template variables with sample data
+        html = html.replace(/\{\{\s*\.Token\s*\}\}/g, sampleData.Token);
+        html = html.replace(/\{\{\s*\.ConfirmationURL\s*\}\}/g, sampleData.ConfirmationURL);
+        html = html.replace(/\{\{\s*\.Email\s*\}\}/g, sampleData.Email);
+        html = html.replace(/\{\{\s*\.SiteURL\s*\}\}/g, sampleData.SiteURL);
+
+        const iframe = document.getElementById('preview-frame');
+        iframe.srcdoc = html;
+      } catch (err) {
+        console.error('Failed to load template:', err);
+      }
+    }
+
+    // Load initial template
+    loadTemplate('magic_link');
+  </script>
+</body>
+</html>

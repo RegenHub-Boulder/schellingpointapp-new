@@ -16,6 +16,16 @@ const formatIcons: Record<string, React.ReactNode> = {
   demo: <Monitor className="h-4 w-4" />,
 }
 
+// Format time from ISO string to readable format (e.g., "9:00 AM")
+function formatTime(isoString: string): string {
+  const date = new Date(isoString)
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 interface SessionCardProps {
   session: {
     id: string
@@ -140,10 +150,10 @@ export function SessionCard({
                   <span>{session.venue.name}</span>
                 ) : null}
               </div>
-              {session.time_slot && (
+              {session.time_slot?.start_time && (
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-4 w-4" />
-                  <span>{session.time_slot.label}</span>
+                  <span>{formatTime(session.time_slot.start_time)}</span>
                 </div>
               )}
             </div>
