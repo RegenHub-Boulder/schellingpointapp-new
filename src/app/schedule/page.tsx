@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
+import { useTracks } from '@/hooks/useTracks'
 import { cn } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -29,6 +30,7 @@ interface Session {
   host_name: string | null
   venue: { name: string } | null
   time_slot: TimeSlot | null
+  track: { id: string; name: string; color: string | null } | null
 }
 
 // Format time from ISO string to readable format (e.g., "9:00 AM")
@@ -62,17 +64,20 @@ function getDateKey(isoString: string): string {
 
 export default function SchedulePage() {
   const { isLoading: authLoading } = useAuth()
+  const { tracks } = useTracks()
   const [sessions, setSessions] = React.useState<Session[]>([])
   const [timeSlots, setTimeSlots] = React.useState<TimeSlot[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null)
+  const [trackFilter, setTrackFilter] = React.useState<string>('all')
+  const [sortBy, setSortBy] = React.useState<'time' | 'venue'>('time')
 
   React.useEffect(() => {
     const fetchData = async () => {
       try {
         const [sessionsRes, timeSlotsRes] = await Promise.all([
           fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?status=eq.scheduled&select=id,title,description,format,duration,host_name,venue:venues(name),time_slot:time_slots(id,label,start_time,end_time)`,
+            `${SUPABASE_URL}/rest/v1/sessions?status=eq.scheduled&select=id,title,description,format,duration,host_name,venue:venues(name),time_slot:time_slots(id,label,start_time,end_time),track:tracks(id,name,color)`,
             {
               headers: {
                 'apikey': SUPABASE_KEY,
@@ -133,23 +138,53 @@ export default function SchedulePage() {
     return timeSlots.filter((slot) => getDateKey(slot.start_time) === selectedDay)
   }, [timeSlots, selectedDay])
 
+  // Filter sessions by selected day and track
+  const filteredSessions = React.useMemo(() => {
+    return sessions.filter((session) => {
+      if (!session.time_slot) return false
+      const slotDate = getDateKey(session.time_slot.start_time)
+      if (slotDate !== selectedDay) return false
+      if (trackFilter !== 'all' && session.track?.id !== trackFilter) return false
+      return true
+    })
+  }, [sessions, selectedDay, trackFilter])
+
   // Group sessions by time slot for the selected day
   const sessionsBySlot = React.useMemo(() => {
     const grouped: Record<string, Session[]> = {}
-    sessions.forEach((session) => {
+    filteredSessions.forEach((session) => {
       if (session.time_slot) {
-        const slotDate = getDateKey(session.time_slot.start_time)
-        if (slotDate === selectedDay) {
-          const slotId = session.time_slot.id
-          if (!grouped[slotId]) {
-            grouped[slotId] = []
-          }
-          grouped[slotId].push(session)
+        const slotId = session.time_slot.id
+        if (!grouped[slotId]) {
+          grouped[slotId] = []
         }
+        grouped[slotId].push(session)
       }
     })
     return grouped
-  }, [sessions, selectedDay])
+  }, [filteredSessions])
+
+  // Group sessions by venue for venue sort mode
+  const sessionsByVenue = React.useMemo(() => {
+    if (sortBy !== 'venue') return null
+    const grouped: Record<string, Session[]> = {}
+    filteredSessions.forEach((session) => {
+      const venueName = session.venue?.name || 'Unassigned'
+      if (!grouped[venueName]) {
+        grouped[venueName] = []
+      }
+      grouped[venueName].push(session)
+    })
+    // Sort sessions within each venue by start time
+    Object.values(grouped).forEach((arr) => {
+      arr.sort((a, b) => {
+        const aTime = a.time_slot?.start_time || ''
+        const bTime = b.time_slot?.start_time || ''
+        return aTime.localeCompare(bTime)
+      })
+    })
+    return grouped
+  }, [filteredSessions, sortBy])
 
   if (authLoading || isLoading) {
     return (
@@ -183,90 +218,250 @@ export default function SchedulePage() {
           </Card>
         ) : (
           <>
-            {/* Day Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-              {days.map((day) => (
-                <Button
-                  key={day.key}
-                  variant={selectedDay === day.key ? 'default' : 'outline'}
-                  onClick={() => setSelectedDay(day.key)}
-                  className={cn(
-                    'whitespace-nowrap',
-                    selectedDay === day.key && 'btn-primary-glow'
-                  )}
-                >
-                  {day.label}
-                </Button>
-              ))}
+            {/* Day Tabs and Controls */}
+            <div className="space-y-3">
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                {days.map((day) => (
+                  <Button
+                    key={day.key}
+                    variant={selectedDay === day.key ? 'default' : 'outline'}
+                    onClick={() => setSelectedDay(day.key)}
+                    className={cn(
+                      'whitespace-nowrap',
+                      selectedDay === day.key && 'btn-primary-glow'
+                    )}
+                  >
+                    {day.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Track filter and sort toggle */}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Sort toggle */}
+                <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg p-1">
+                  <button
+                    onClick={() => setSortBy('time')}
+                    className={cn(
+                      'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5',
+                      sortBy === 'time'
+                        ? 'bg-background shadow-sm'
+                        : 'hover:bg-background/50'
+                    )}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    By Time
+                  </button>
+                  <button
+                    onClick={() => setSortBy('venue')}
+                    className={cn(
+                      'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5',
+                      sortBy === 'venue'
+                        ? 'bg-background shadow-sm'
+                        : 'hover:bg-background/50'
+                    )}
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    By Venue
+                  </button>
+                </div>
+
+                {/* Track filter */}
+                {tracks.length > 0 && (
+                  <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 pb-2 sm:pb-0 sm:flex-wrap">
+                      <span className="text-xs text-muted-foreground mr-1 whitespace-nowrap">Track:</span>
+                      <button
+                        onClick={() => setTrackFilter('all')}
+                        className={cn(
+                          'px-3 py-1.5 text-xs rounded-md transition-colors whitespace-nowrap min-h-[32px]',
+                          trackFilter === 'all'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        )}
+                      >
+                        All
+                      </button>
+                      {tracks.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setTrackFilter(t.id)}
+                          className={cn(
+                            'px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[32px]',
+                            trackFilter === t.id
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80'
+                          )}
+                        >
+                          {t.color && (
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: t.color }}
+                            />
+                          )}
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Sessions for selected day */}
             <div className="space-y-4">
-              {filteredSlots.map((slot) => {
-                const slotSessions = sessionsBySlot[slot.id] || []
-                if (slotSessions.length === 0) return null
+              {sortBy === 'time' ? (
+                // Group by time slot
+                <>
+                  {filteredSlots.map((slot) => {
+                    const slotSessions = sessionsBySlot[slot.id] || []
+                    if (slotSessions.length === 0) return null
 
-                const startTime = formatTime(slot.start_time)
-                const endTime = formatTime(slot.end_time)
+                    const startTime = formatTime(slot.start_time)
+                    const endTime = formatTime(slot.end_time)
 
-                return (
-                  <div key={slot.id}>
-                    {/* Time header - more compact */}
-                    <div className="sticky top-[104px] z-10 bg-background/95 backdrop-blur-sm py-1.5 -mx-4 px-4 sm:mx-0 sm:px-0 mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 text-primary font-semibold text-sm">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{startTime} - {endTime}</span>
+                    return (
+                      <div key={slot.id}>
+                        {/* Time header - more compact */}
+                        <div className="sticky top-[104px] z-10 bg-background/95 backdrop-blur-sm py-1.5 -mx-4 px-4 sm:mx-0 sm:px-0 mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-primary font-semibold text-sm">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>{startTime} - {endTime}</span>
+                            </div>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
                         </div>
-                        <div className="flex-1 h-px bg-border" />
+
+                        {/* Session cards - compact layout */}
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {slotSessions.map((session) => (
+                            <Link key={session.id} href={`/sessions/${session.id}`}>
+                              <Card className="h-full card-hover border-border/50 hover:border-primary/30">
+                                <CardContent className="p-3">
+                                  <div className="space-y-1.5">
+                                    {/* Title and format on same row */}
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
+                                      <Badge variant="secondary" className="capitalize text-[10px] flex-shrink-0">
+                                        {session.format}
+                                      </Badge>
+                                    </div>
+
+                                    {/* Host and venue inline */}
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                      {session.host_name && (
+                                        <div className="flex items-center gap-1 truncate">
+                                          <User className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{session.host_name}</span>
+                                        </div>
+                                      )}
+                                      {session.venue && (
+                                        <div className="flex items-center gap-1 truncate">
+                                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{session.venue.name}</span>
+                                        </div>
+                                      )}
+                                      {session.track && (
+                                        <div className="flex items-center gap-1 truncate">
+                                          {session.track.color && (
+                                            <span
+                                              className="w-2 h-2 rounded-full flex-shrink-0"
+                                              style={{ backgroundColor: session.track.color }}
+                                            />
+                                          )}
+                                          <span className="truncate">{session.track.name}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </Link>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )
+                  })}
+                </>
+              ) : (
+                // Group by venue
+                <>
+                  {sessionsByVenue && Object.entries(sessionsByVenue)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([venueName, venueSessions]) => (
+                      <div key={venueName}>
+                        {/* Venue header */}
+                        <div className="sticky top-[104px] z-10 bg-background/95 backdrop-blur-sm py-1.5 -mx-4 px-4 sm:mx-0 sm:px-0 mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-primary font-semibold text-sm">
+                              <MapPin className="h-3.5 w-3.5" />
+                              <span>{venueName}</span>
+                            </div>
+                            <div className="flex-1 h-px bg-border" />
+                            <span className="text-xs text-muted-foreground">{venueSessions.length} sessions</span>
+                          </div>
+                        </div>
 
-                    {/* Session cards - compact layout */}
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {slotSessions.map((session) => (
-                        <Link key={session.id} href={`/sessions/${session.id}`}>
-                          <Card className="h-full card-hover border-border/50 hover:border-primary/30">
-                            <CardContent className="p-3">
-                              <div className="space-y-1.5">
-                                {/* Title and format on same row */}
-                                <div className="flex items-start justify-between gap-2">
-                                  <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
-                                  <Badge variant="secondary" className="capitalize text-[10px] flex-shrink-0">
-                                    {session.format}
-                                  </Badge>
-                                </div>
-
-                                {/* Host and venue inline */}
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                  {session.host_name && (
-                                    <div className="flex items-center gap-1 truncate">
-                                      <User className="h-3 w-3 flex-shrink-0" />
-                                      <span className="truncate">{session.host_name}</span>
+                        {/* Session cards - compact layout */}
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {venueSessions.map((session) => (
+                            <Link key={session.id} href={`/sessions/${session.id}`}>
+                              <Card className="h-full card-hover border-border/50 hover:border-primary/30">
+                                <CardContent className="p-3">
+                                  <div className="space-y-1.5">
+                                    {/* Title and format on same row */}
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
+                                      <Badge variant="secondary" className="capitalize text-[10px] flex-shrink-0">
+                                        {session.format}
+                                      </Badge>
                                     </div>
-                                  )}
-                                  {session.venue && (
-                                    <div className="flex items-center gap-1 truncate">
-                                      <MapPin className="h-3 w-3 flex-shrink-0" />
-                                      <span className="truncate">{session.venue.name}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
 
-              {Object.keys(sessionsBySlot).length === 0 && (
+                                    {/* Host and time inline */}
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                      {session.time_slot && (
+                                        <div className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3 flex-shrink-0" />
+                                          <span>{formatTime(session.time_slot.start_time)}</span>
+                                        </div>
+                                      )}
+                                      {session.host_name && (
+                                        <div className="flex items-center gap-1 truncate">
+                                          <User className="h-3 w-3 flex-shrink-0" />
+                                          <span className="truncate">{session.host_name}</span>
+                                        </div>
+                                      )}
+                                      {session.track && (
+                                        <div className="flex items-center gap-1 truncate">
+                                          {session.track.color && (
+                                            <span
+                                              className="w-2 h-2 rounded-full flex-shrink-0"
+                                              style={{ backgroundColor: session.track.color }}
+                                            />
+                                          )}
+                                          <span className="truncate">{session.track.name}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </>
+              )}
+
+              {filteredSessions.length === 0 && (
                 <Card>
                   <CardContent className="py-8 text-center">
                     <p className="text-muted-foreground">
-                      No sessions scheduled for this day yet.
+                      {trackFilter !== 'all'
+                        ? 'No sessions match the selected track.'
+                        : 'No sessions scheduled for this day yet.'}
                     </p>
                   </CardContent>
                 </Card>

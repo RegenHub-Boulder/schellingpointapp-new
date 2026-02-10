@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { SessionCard } from '@/components/SessionCard'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
+import { useTracks } from '@/hooks/useTracks'
 import { votesToCredits, cn } from '@/lib/utils'
 
 const TOTAL_CREDITS = 100
@@ -39,6 +40,7 @@ function getAccessToken(): string | null {
 export default function SessionsPage() {
   const router = useRouter()
   const { user, profile, isLoading: authLoading, signOut } = useAuth()
+  const { tracks } = useTracks()
 
   const [sessions, setSessions] = React.useState<any[]>([])
   const [userVotes, setUserVotes] = React.useState<Record<string, number>>({})
@@ -46,6 +48,7 @@ export default function SessionsPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [search, setSearch] = React.useState('')
   const [format, setFormat] = React.useState('all')
+  const [track, setTrack] = React.useState<string>('all')
   const [sort, setSort] = React.useState('votes')
   const [showFilters, setShowFilters] = React.useState(false)
 
@@ -63,7 +66,7 @@ export default function SessionsPage() {
     const fetchSessions = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time)&order=total_votes.desc`,
+          `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color)&order=total_votes.desc`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -152,7 +155,7 @@ export default function SessionsPage() {
   const refreshSessions = async () => {
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time)&order=total_votes.desc`,
+        `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color)&order=total_votes.desc`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -354,6 +357,11 @@ export default function SessionsPage() {
       filtered = filtered.filter((s) => s.format === format)
     }
 
+    // Track filter
+    if (track !== 'all') {
+      filtered = filtered.filter((s) => s.track?.id === track)
+    }
+
     // Sort
     if (sort === 'votes') {
       filtered = [...filtered].sort((a, b) => b.total_votes - a.total_votes)
@@ -366,7 +374,7 @@ export default function SessionsPage() {
     }
 
     return filtered
-  }, [sessions, search, format, sort])
+  }, [sessions, search, format, track, sort])
 
   const favoriteCount = favorites.size
 
@@ -432,6 +440,45 @@ export default function SessionsPage() {
                       {f === 'all' ? 'All' : f}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 w-full sm:w-auto">
+                <label className="text-xs font-medium text-muted-foreground">Track</label>
+                <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <div className="flex gap-1.5 pb-2 sm:pb-0 sm:flex-wrap">
+                    <button
+                      onClick={() => setTrack('all')}
+                      className={cn(
+                        'px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap min-h-[36px]',
+                        track === 'all'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background border hover:bg-accent'
+                      )}
+                    >
+                      All
+                    </button>
+                    {tracks.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTrack(t.id)}
+                        className={cn(
+                          'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[36px]',
+                          track === t.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-background border hover:bg-accent'
+                        )}
+                      >
+                        {t.color && (
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: t.color }}
+                          />
+                        )}
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

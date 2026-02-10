@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useTracks } from '@/hooks/useTracks'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -47,15 +48,18 @@ interface EditSessionModalProps {
     description: string | null
     format: string
     topic_tags: string[] | null
+    track_id?: string | null
   }
   onSave: () => void
 }
 
 export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessionModalProps) {
+  const { tracks } = useTracks()
   const [title, setTitle] = React.useState(session.title)
   const [description, setDescription] = React.useState(session.description || '')
   const [format, setFormat] = React.useState(session.format)
   const [tags, setTags] = React.useState<string[]>(session.topic_tags || [])
+  const [trackId, setTrackId] = React.useState<string | null>(session.track_id || null)
   const [customTag, setCustomTag] = React.useState('')
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -66,6 +70,7 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
     setDescription(session.description || '')
     setFormat(session.format)
     setTags(session.topic_tags || [])
+    setTrackId(session.track_id || null)
   }, [session])
 
   const handleAddTag = (tag: string) => {
@@ -111,6 +116,7 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
             description: description.trim() || null,
             format,
             topic_tags: tags.length > 0 ? tags : null,
+            track_id: trackId,
           }),
         }
       )
@@ -205,6 +211,46 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
                 >
                   <div className="font-medium text-sm">{f.label}</div>
                   <div className="text-xs text-muted-foreground">{f.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Track */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Track</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTrackId(null)}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-sm transition-colors text-left',
+                  trackId === null
+                    ? 'border-primary bg-primary/10'
+                    : 'hover:border-muted-foreground/50'
+                )}
+              >
+                None
+              </button>
+              {tracks.map((track) => (
+                <button
+                  key={track.id}
+                  type="button"
+                  onClick={() => setTrackId(track.id)}
+                  className={cn(
+                    'px-3 py-2 rounded-lg border text-sm transition-colors text-left flex items-center gap-2',
+                    trackId === track.id
+                      ? 'border-primary bg-primary/10'
+                      : 'hover:border-muted-foreground/50'
+                  )}
+                >
+                  {track.color && (
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: track.color }}
+                    />
+                  )}
+                  <span className="truncate">{track.name}</span>
                 </button>
               ))}
             </div>

@@ -118,7 +118,7 @@ export default function SessionDetailPage() {
     const fetchSession = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
+          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color)`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -263,7 +263,7 @@ export default function SessionDetailPage() {
 
       // Refresh session to get updated vote counts
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
+        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color)`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -545,6 +545,20 @@ export default function SessionDetailPage() {
                     <Badge variant={session.status === 'scheduled' ? 'default' : 'secondary'}>
                       {session.status}
                     </Badge>
+                    {session.track && (
+                      <>
+                        <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                        <span className="flex items-center gap-1.5">
+                          {session.track.color && (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: session.track.color }}
+                            />
+                          )}
+                          <span>{session.track.name}</span>
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   <h1 className="text-2xl sm:text-3xl font-bold mb-4 break-words">{session.title}</h1>
@@ -1066,11 +1080,12 @@ export default function SessionDetailPage() {
                   description: session.description,
                   format: session.format,
                   topic_tags: session.topic_tags,
+                  track_id: session.track_id,
                 }}
                 onSave={async () => {
                   // Refresh session data
                   const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
+                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color)`,
                     {
                       headers: {
                         'apikey': SUPABASE_KEY,

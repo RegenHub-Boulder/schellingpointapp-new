@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
+import { useTracks } from '@/hooks/useTracks'
 import { cn } from '@/lib/utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -52,8 +53,10 @@ function getAccessToken(): string | null {
 export default function ProposePage() {
   const router = useRouter()
   const { user, profile, isLoading: authLoading } = useAuth()
+  const { tracks } = useTracks()
 
   const [title, setTitle] = React.useState('')
+  const [trackId, setTrackId] = React.useState<string | null>(null)
   const [description, setDescription] = React.useState('')
   const [format, setFormat] = React.useState('talk')
   const [duration, setDuration] = React.useState(60)
@@ -122,6 +125,7 @@ export default function ProposePage() {
           status: 'pending',
           is_self_hosted: isSelfHosted,
           custom_location: isSelfHosted ? customLocation.trim() || null : null,
+          track_id: trackId,
         }),
       })
 
@@ -183,6 +187,7 @@ export default function ProposePage() {
                     setTags([])
                     setIsSelfHosted(false)
                     setCustomLocation('')
+                    setTrackId(null)
                   }}
                 >
                   Propose Another
@@ -287,6 +292,49 @@ export default function ProposePage() {
                       )}
                     >
                       {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Track */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Track</label>
+                <p className="text-xs text-muted-foreground">
+                  Which theme does your session fit best?
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTrackId(null)}
+                    className={cn(
+                      'px-3 py-2 rounded-lg border text-sm transition-colors text-left',
+                      trackId === null
+                        ? 'border-primary bg-primary/10'
+                        : 'hover:border-muted-foreground/50'
+                    )}
+                  >
+                    None
+                  </button>
+                  {tracks.map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => setTrackId(track.id)}
+                      className={cn(
+                        'px-3 py-2 rounded-lg border text-sm transition-colors text-left flex items-center gap-2',
+                        trackId === track.id
+                          ? 'border-primary bg-primary/10'
+                          : 'hover:border-muted-foreground/50'
+                      )}
+                    >
+                      {track.color && (
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: track.color }}
+                        />
+                      )}
+                      <span className="truncate">{track.name}</span>
                     </button>
                   ))}
                 </div>

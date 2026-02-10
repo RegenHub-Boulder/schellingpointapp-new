@@ -41,6 +41,7 @@ interface SessionCardProps {
     time_slot?: { label: string; start_time: string } | null
     is_self_hosted?: boolean
     custom_location?: string | null
+    track?: { id: string; name: string; color: string | null } | null
   }
   userVotes?: number
   isFavorited?: boolean
@@ -84,18 +85,34 @@ export function SessionCard({
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
             <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0 cursor-pointer">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
-                {formatIcons[session.format] || <Mic className="h-4 w-4" />}
-                <span className="capitalize">{session.format}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground mb-1.5 flex-wrap">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  {formatIcons[session.format] || <Mic className="h-4 w-4" />}
+                  <span className="capitalize">{session.format}</span>
+                </span>
                 <span className="text-muted-foreground/50">•</span>
-                <span>{session.duration} min</span>
+                <span className="whitespace-nowrap">{session.duration} min</span>
+                {session.track && (
+                  <>
+                    <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                    <span className="flex items-center gap-1 w-full sm:w-auto mt-0.5 sm:mt-0">
+                      {session.track.color && (
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: session.track.color }}
+                        />
+                      )}
+                      <span className="truncate text-xs sm:text-sm">{session.track.name}</span>
+                    </span>
+                  </>
+                )}
               </div>
               <h3 className="font-semibold line-clamp-2 group-hover:text-primary transition-colors">
                 {session.title}
                 <ChevronRight className="inline h-4 w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
               {session.host_name && (
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1 whitespace-nowrap">
                   by {session.host_name}
                 </p>
               )}
