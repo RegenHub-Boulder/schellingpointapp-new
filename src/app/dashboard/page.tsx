@@ -315,7 +315,7 @@ export default function DashboardPage() {
                   <p className="text-xs sm:text-sm text-muted-foreground">Credits Used</p>
                 </div>
                 <div>
-                  <p className="text-2xl sm:text-3xl font-bold text-green-500">{TOTAL_CREDITS - creditsSpent}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">{TOTAL_CREDITS - creditsSpent}</p>
                   <p className="text-xs sm:text-sm text-muted-foreground">Credits Remaining</p>
                 </div>
               </div>

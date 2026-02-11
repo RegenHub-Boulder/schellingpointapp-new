@@ -190,7 +190,7 @@ export default function MyVotesPage() {
                 <div className="text-sm text-muted-foreground">Credits Used</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-green-500">{remainingCredits}</div>
+                <div className="text-3xl font-bold text-primary">{remainingCredits}</div>
                 <div className="text-sm text-muted-foreground">Credits Remaining</div>
               </div>
             </div>
