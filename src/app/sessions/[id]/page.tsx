@@ -558,40 +558,40 @@ export default function SessionDetailPage() {
                 </Button>
               </div>
 
-              <div className="pr-28 mb-4">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
-                    <FormatIcon className="h-4 w-4 flex-shrink-0" />
-                    <span className="capitalize">{session.format}</span>
-                    <span className="text-muted-foreground/50 hidden sm:inline">•</span>
-                    <Clock className="h-4 w-4 flex-shrink-0" />
-                    <span>{session.duration} min</span>
-                    <span className="text-muted-foreground/50 hidden sm:inline">•</span>
-                    <Badge variant={session.status === 'scheduled' ? 'default' : 'secondary'}>
-                      {session.status}
-                    </Badge>
-                    {session.track && (
-                      <>
-                        <span className="text-muted-foreground/50 hidden sm:inline">•</span>
-                        <span className="flex items-center gap-1.5">
-                          {session.track.color && (
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: session.track.color }}
-                            />
-                          )}
-                          <span>{session.track.name}</span>
-                        </span>
-                      </>
-                    )}
-                  </div>
+              <div className="mb-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3 pr-28">
+                  <FormatIcon className="h-4 w-4 flex-shrink-0" />
+                  <span className="capitalize">{session.format}</span>
+                  <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                  <Clock className="h-4 w-4 flex-shrink-0" />
+                  <span>{session.duration} min</span>
+                  <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                  <Badge variant={session.status === 'scheduled' ? 'default' : 'secondary'}>
+                    {session.status}
+                  </Badge>
+                  {session.track && (
+                    <>
+                      <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                      <span className="flex items-center gap-1.5">
+                        {session.track.color && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: session.track.color }}
+                          />
+                        )}
+                        <span>{session.track.name}</span>
+                      </span>
+                    </>
+                  )}
+                </div>
 
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-4 break-words">{session.title}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold mb-4 break-words pr-28">{session.title}</h1>
 
-                  {(session.host_name || session.host) && (
-                    <div className="relative" ref={hostCardRef}>
-                      <button
-                        onClick={() => setShowHostCard(!showHostCard)}
-                        className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity group"
+                {(session.host_name || session.host) && (
+                  <div className="relative" ref={hostCardRef}>
+                    <button
+                      onClick={() => setShowHostCard(!showHostCard)}
+                      className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
                       >
                         <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                           {session.host?.avatar_url ? (
