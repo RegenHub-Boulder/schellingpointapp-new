@@ -332,7 +332,7 @@ export default function DashboardPage() {
 
         {/* Pending Proposals (only visible to the user who proposed them) */}
         {user && pendingSessions.length > 0 && (
-          <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <Card className="border-yellow-500/30 bg-yellow-500/5 min-w-0 overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -379,7 +379,7 @@ export default function DashboardPage() {
         {/* Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Top Sessions */}
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -432,7 +432,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent Sessions */}
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -482,7 +482,7 @@ export default function DashboardPage() {
 
         {/* User's Proposed Sessions */}
         {user && userProposedSessions.length > 0 && (
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -525,7 +525,7 @@ export default function DashboardPage() {
 
         {/* User's Voted Sessions */}
         {user && userVotedSessions.length > 0 && (
-          <Card>
+          <Card className="min-w-0 overflow-hidden">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
