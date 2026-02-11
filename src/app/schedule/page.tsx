@@ -237,13 +237,13 @@ export default function SchedulePage() {
               </div>
 
               {/* Track filter and sort toggle */}
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
                 {/* Sort toggle */}
                 <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg p-1">
                   <button
                     onClick={() => setSortBy('time')}
                     className={cn(
-                      'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5',
+                      'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 min-h-[36px]',
                       sortBy === 'time'
                         ? 'bg-background shadow-sm'
                         : 'hover:bg-background/50'
@@ -255,7 +255,7 @@ export default function SchedulePage() {
                   <button
                     onClick={() => setSortBy('venue')}
                     className={cn(
-                      'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5',
+                      'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 min-h-[36px]',
                       sortBy === 'venue'
                         ? 'bg-background shadow-sm'
                         : 'hover:bg-background/50'

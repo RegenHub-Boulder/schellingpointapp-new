@@ -362,16 +362,15 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
               {interests.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {interests.map((interest) => (
-                    <Badge key={interest} variant="default" className="gap-1 pr-1">
+                    <button
+                      key={interest}
+                      type="button"
+                      onClick={() => toggleInterest(interest)}
+                      className="inline-flex items-center rounded-full border border-primary bg-primary/10 px-4 py-2.5 text-sm min-h-[44px] hover:bg-primary/20 transition-colors"
+                    >
                       {interest}
-                      <button
-                        type="button"
-                        onClick={() => toggleInterest(interest)}
-                        className="ml-1 rounded-full hover:bg-primary-foreground/20 p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
+                      <X className="h-4 w-4 ml-1.5" />
+                    </button>
                   ))}
                 </div>
               )}

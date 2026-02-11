@@ -25,6 +25,7 @@ import {
   Hexagon,
   Trash2,
   AlertTriangle,
+  X,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -617,7 +618,15 @@ export default function SessionDetailPage() {
                           />
                           {/* Card */}
                           <div className="fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:bottom-auto md:left-0 md:top-full md:mt-2 md:w-80 bg-card border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 md:slide-in-from-bottom-0">
-                            <div className="p-4">
+                            {/* Desktop close button */}
+                            <button
+                              onClick={() => setShowHostCard(false)}
+                              className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-muted transition-colors hidden md:flex"
+                              aria-label="Close"
+                            >
+                              <X className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                            <div className="p-4 pr-10 md:pr-10">
                               {/* Header with avatar */}
                               <div className="flex items-start gap-3 mb-3">
                                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
