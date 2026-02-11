@@ -915,6 +915,9 @@ export default function SessionDetailPage() {
                         Next vote costs {nextVoteCost} credits
                       </p>
                     )}
+                    <p className="text-xs text-muted-foreground text-center mt-3 pt-3 border-t">
+                      Votes save automatically
+                    </p>
                   </div>
                 )}
 

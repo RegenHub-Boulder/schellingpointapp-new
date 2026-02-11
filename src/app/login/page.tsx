@@ -27,10 +27,15 @@ function LoginContent() {
     }
   }, [user, authLoading, router])
 
-  // Check for auth errors
+  const [loggedOutMessage, setLoggedOutMessage] = React.useState(false)
+
+  // Check for auth errors or logged out state
   React.useEffect(() => {
     if (searchParams.get('error') === 'auth') {
       setError('Authentication failed. Please try again.')
+    }
+    if (searchParams.get('logged_out') === 'true') {
+      setLoggedOutMessage(true)
     }
   }, [searchParams])
 
@@ -106,11 +111,16 @@ function LoginContent() {
           </div>
           <CardTitle className="text-2xl">Welcome</CardTitle>
           <CardDescription>
-            Sign in with your email to participate
+            Sign in or create an account to participate
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {loggedOutMessage && (
+              <div className="rounded-lg bg-muted border p-3 text-sm text-center">
+                You've been signed out successfully.
+              </div>
+            )}
             {error && (
               <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
                 {error}
@@ -132,6 +142,8 @@ function LoginContent() {
           </form>
           <p className="text-xs text-center text-muted-foreground mt-4">
             We'll email you a magic link for password-free sign in.
+            <br />
+            <span className="text-foreground/70">No account? One will be created automatically.</span>
           </p>
         </CardContent>
       </Card>

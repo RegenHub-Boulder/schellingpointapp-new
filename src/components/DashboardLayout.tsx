@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Presentation,
   Calendar,
@@ -100,7 +100,13 @@ function clearCachedVotes() {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, profile, signOut, needsOnboarding, refreshProfile } = useAuth()
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/login?logged_out=true')
+  }
   const [showOnboarding, setShowOnboarding] = React.useState(false)
   const [showSettings, setShowSettings] = React.useState(false)
 
@@ -236,7 +242,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     </div>
                   </button>
-                  <Button variant="ghost" size="sm" onClick={signOut}>
+                  <Button variant="ghost" size="sm" onClick={handleSignOut} title="Sign out">
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </>

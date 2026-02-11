@@ -95,6 +95,10 @@ export default function ProposePage() {
       setError('Title is required')
       return
     }
+    if (isSelfHosted && !customLocation.trim()) {
+      setError('Please provide location details for self-hosted sessions')
+      return
+    }
 
     const token = getAccessToken()
     if (!token) {
@@ -219,12 +223,6 @@ export default function ProposePage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
               {/* Title */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">
@@ -387,7 +385,7 @@ export default function ProposePage() {
                   <div className="space-y-2 pt-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      Location Details
+                      Location Details <span className="text-destructive">*</span>
                     </label>
                     <Textarea
                       value={customLocation}
@@ -456,6 +454,13 @@ export default function ProposePage() {
                     ))}
                 </div>
               </div>
+
+              {/* Error */}
+              {error && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
 
               {/* Submit */}
               <Button type="submit" className="w-full" loading={isSubmitting}>
