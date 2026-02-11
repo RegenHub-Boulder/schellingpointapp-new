@@ -26,6 +26,7 @@ const formats = [
 ]
 
 const durations = [
+  { value: 15, label: '15 min' },
   { value: 30, label: '30 min' },
   { value: 60, label: '60 min' },
   { value: 90, label: '90 min' },
