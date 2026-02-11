@@ -532,10 +532,34 @@ export default function SessionDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Header Card - no overflow-hidden here as host popover needs to overflow */}
-            <Card className="p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
+            <Card className="p-6 relative">
+              <div className="absolute top-4 right-4 flex gap-2">
+                {/* Edit button - show for session host or admin */}
+                {user && (session.host_id === user.id || profile?.is_admin) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowEditModal(true)}
+                    title="Edit session"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleToggleFavorite}
+                  className={isFavorited ? 'text-red-500' : ''}
+                >
+                  <Heart className={isFavorited ? 'fill-current' : ''} />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleShare}>
+                  <Share2 className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="pr-28 mb-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
                     <FormatIcon className="h-4 w-4 flex-shrink-0" />
                     <span className="capitalize">{session.format}</span>
                     <span className="text-muted-foreground/50 hidden sm:inline">•</span>
@@ -708,32 +732,6 @@ export default function SessionDetailPage() {
                     </div>
                   )}
                 </div>
-
-                <div className="flex gap-2 flex-shrink-0">
-                  {/* Edit button - show for session host or admin */}
-                  {user && (session.host_id === user.id || profile?.is_admin) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowEditModal(true)}
-                      title="Edit session"
-                    >
-                      <Pencil className="h-5 w-5" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleToggleFavorite}
-                    className={isFavorited ? 'text-red-500' : ''}
-                  >
-                    <Heart className={isFavorited ? 'fill-current' : ''} />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={handleShare}>
-                    <Share2 className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
 
               {/* Tags */}
               {session.topic_tags && session.topic_tags.length > 0 && (
