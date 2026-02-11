@@ -580,7 +580,7 @@ export default function SessionDetailPage() {
                             <User className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
-                        <span className="text-muted-foreground">Hosted by</span>
+                        <span className="text-muted-foreground whitespace-nowrap">Hosted by</span>
                         <span className="font-medium group-hover:text-primary transition-colors">
                           {session.host?.display_name || session.host_name}
                         </span>
