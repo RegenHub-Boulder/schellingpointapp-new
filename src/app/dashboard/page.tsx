@@ -349,13 +349,13 @@ export default function DashboardPage() {
                 {pendingSessions.map((session) => (
                   <div
                     key={session.id}
-                    className="p-4 rounded-lg border border-yellow-500/20 bg-background/50"
+                    className="p-4 rounded-lg border border-yellow-500/20 bg-background/50 min-w-0"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="font-medium line-clamp-2">
+                      <p className="font-medium line-clamp-2 min-w-0">
                         {session.title}
                       </p>
-                      <Badge variant="secondary" className="capitalize text-xs flex-shrink-0 bg-yellow-500/20 text-yellow-600">
+                      <Badge variant="secondary" className="capitalize text-xs flex-shrink-0 bg-yellow-500/20 text-yellow-600 whitespace-nowrap">
                         pending
                       </Badge>
                     </div>

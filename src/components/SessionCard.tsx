@@ -122,6 +122,7 @@ export function SessionCard({
             {onToggleFavorite && isLoggedIn && (
               <button
                 onClick={() => onToggleFavorite(session.id)}
+                title={isFavorited ? 'Remove from My Schedule' : 'Save to My Schedule'}
                 className={cn(
                   'p-2.5 rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
                   isFavorited
