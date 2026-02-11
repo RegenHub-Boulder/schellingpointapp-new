@@ -533,8 +533,8 @@ export default function SessionDetailPage() {
           <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* Header Card - no overflow-hidden here as host popover needs to overflow */}
             <Card className="p-6">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
                     <FormatIcon className="h-4 w-4 flex-shrink-0" />
                     <span className="capitalize">{session.format}</span>
@@ -709,7 +709,7 @@ export default function SessionDetailPage() {
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   {/* Edit button - show for session host or admin */}
                   {user && (session.host_id === user.id || profile?.is_admin) && (
                     <Button
