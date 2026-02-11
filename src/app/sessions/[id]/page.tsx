@@ -567,9 +567,9 @@ export default function SessionDetailPage() {
                     <div className="relative" ref={hostCardRef}>
                       <button
                         onClick={() => setShowHostCard(!showHostCard)}
-                        className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity group"
+                        className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity group min-w-0 max-w-full"
                       >
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                           {session.host?.avatar_url ? (
                             <img
                               src={session.host.avatar_url}
@@ -580,8 +580,8 @@ export default function SessionDetailPage() {
                             <User className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
-                        <span className="text-muted-foreground whitespace-nowrap">Hosted by</span>
-                        <span className="font-medium group-hover:text-primary transition-colors">
+                        <span className="text-muted-foreground whitespace-nowrap flex-shrink-0">Hosted by</span>
+                        <span className="font-medium group-hover:text-primary transition-colors truncate">
                           {session.host?.display_name || session.host_name}
                         </span>
                       </button>
