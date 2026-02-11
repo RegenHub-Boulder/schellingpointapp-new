@@ -528,9 +528,9 @@ export default function SessionDetailPage() {
           Back to Sessions
         </Button>
 
-        <div className="grid gap-6 lg:grid-cols-3 overflow-hidden">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6 min-w-0">
+          <div className="lg:col-span-2 space-y-6">
             {/* Header Card - no overflow-hidden here as host popover needs to overflow */}
             <Card className="p-6">
               <div className="flex items-start gap-4 mb-4">
