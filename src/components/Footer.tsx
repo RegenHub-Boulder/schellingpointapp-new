@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Send, Youtube } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // X (Twitter) icon component
@@ -52,7 +52,7 @@ export function Footer({ className, variant = 'default' }: FooterProps) {
               {/* Social Icons */}
               <div className="flex items-center gap-2">
                 <a
-                  href="https://t.me/ethboulder"
+                  href="https://t.me/+hDrF89xECLsxNjFh"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1.5 rounded-full text-muted-foreground hover:text-primary transition-colors"
@@ -68,15 +68,6 @@ export function Footer({ className, variant = 'default' }: FooterProps) {
                   aria-label="X (Twitter)"
                 >
                   <XIcon className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://youtube.com/@ethboulder"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1.5 rounded-full text-muted-foreground hover:text-primary transition-colors"
-                  aria-label="YouTube"
-                >
-                  <Youtube className="h-4 w-4" />
                 </a>
               </div>
 
@@ -198,7 +189,7 @@ export function Footer({ className, variant = 'default' }: FooterProps) {
           {/* Social Icons */}
           <div className="flex justify-center items-center gap-4 sm:gap-6 mb-6">
             <a
-              href="https://t.me/ethboulder"
+              href="https://t.me/+hDrF89xECLsxNjFh"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2.5 sm:p-3 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
@@ -214,15 +205,6 @@ export function Footer({ className, variant = 'default' }: FooterProps) {
               aria-label="X (Twitter)"
             >
               <XIcon className="h-5 w-5" />
-            </a>
-            <a
-              href="https://youtube.com/@ethboulder"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 sm:p-3 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
-              aria-label="YouTube"
-            >
-              <Youtube className="h-5 w-5" />
             </a>
           </div>
 
