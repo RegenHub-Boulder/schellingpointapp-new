@@ -12,7 +12,7 @@ interface SessionPageProps {
 async function getSession(id: string) {
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/sessions?id=eq.${id}&select=*,host:profiles!host_id(display_name),track:tracks(name)`,
+      `${SUPABASE_URL}/rest/v1/sessions?id=eq.${id}&select=*,host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color),venue:venues(*),time_slot:time_slots(*)`,
       {
         headers: {
           'apikey': SUPABASE_KEY,
