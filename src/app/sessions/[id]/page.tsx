@@ -12,7 +12,7 @@ interface SessionPageProps {
 async function getSession(id: string) {
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/sessions?id=eq.${id}&select=*,host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color),venue:venues(*),time_slot:time_slots(*)`,
+      `${SUPABASE_URL}/rest/v1/sessions?id=eq.${id}&select=*,host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color),venue:venues(*),time_slot:time_slots(*)`,
       {
         headers: {
           'apikey': SUPABASE_KEY,
@@ -45,7 +45,14 @@ export async function generateMetadata({ params }: SessionPageProps): Promise<Me
   }
 
   // Build a concise description for social cards
-  const hostName = session.host?.display_name || session.host_name || 'Anonymous'
+  const primaryHostName = session.host?.display_name || session.host_name || 'Anonymous'
+  const cohostNames = (session.cohosts || [])
+    .map((c: any) => c.profile?.display_name)
+    .filter(Boolean)
+  const allHostNames = [primaryHostName, ...cohostNames]
+  const hostName = allHostNames.length > 1
+    ? allHostNames.slice(0, -1).join(', ') + ' & ' + allHostNames[allHostNames.length - 1]
+    : primaryHostName
   const trackName = session.track?.name ? ` | ${session.track.name}` : ''
   const format = session.format ? session.format.charAt(0).toUpperCase() + session.format.slice(1) : ''
 
@@ -80,7 +87,7 @@ export async function generateMetadata({ params }: SessionPageProps): Promise<Me
         },
       ],
       type: 'article',
-      authors: [hostName],
+      authors: allHostNames,
     },
     twitter: {
       card: 'summary_large_image',

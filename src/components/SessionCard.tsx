@@ -42,6 +42,7 @@ interface SessionCardProps {
     is_self_hosted?: boolean
     custom_location?: string | null
     track?: { id: string; name: string; color: string | null } | null
+    cohosts?: { profile: { display_name: string | null } | null }[] | null
   }
   userVotes?: number
   isFavorited?: boolean
@@ -111,11 +112,22 @@ export function SessionCard({
                 {session.title}
                 <ChevronRight className="inline h-4 w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
-              {session.host_name && (
-                <p className="text-sm text-muted-foreground mt-1 whitespace-nowrap">
-                  by {session.host_name}
-                </p>
-              )}
+              {session.host_name && (() => {
+                const cohostNames = (session.cohosts || [])
+                  .map(c => c.profile?.display_name)
+                  .filter(Boolean) as string[]
+                let byLine = `by ${session.host_name}`
+                if (cohostNames.length === 1) {
+                  byLine += ` & ${cohostNames[0]}`
+                } else if (cohostNames.length > 1) {
+                  byLine += ` & ${cohostNames.length} others`
+                }
+                return (
+                  <p className="text-sm text-muted-foreground mt-1 whitespace-nowrap">
+                    {byLine}
+                  </p>
+                )
+              })()}
             </Link>
 
             {/* Favorite Button */}

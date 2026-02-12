@@ -10,7 +10,7 @@ import {
 
 const SESSION_FIELDS = 'id,title,description,format,duration,host_name,topic_tags,status,is_self_hosted,custom_location,session_type,is_votable,total_votes,total_credits,voter_count,host_id,venue_id,time_slot_id,track_id,created_at,updated_at'
 
-const VALID_INCLUDES = ['host', 'track', 'venue', 'timeslot']
+const VALID_INCLUDES = ['host', 'track', 'venue', 'timeslot', 'cohosts']
 const VALID_STATUSES = ['pending', 'approved', 'rejected', 'scheduled']
 
 function buildSelect(includes: string[]): string {
@@ -26,6 +26,9 @@ function buildSelect(includes: string[]): string {
   }
   if (includes.includes('timeslot')) {
     parts.push('time_slot:time_slots(id,start_time,end_time,label,is_break,day_date,slot_type)')
+  }
+  if (includes.includes('cohosts')) {
+    parts.push('cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation))')
   }
   return parts.join(',')
 }

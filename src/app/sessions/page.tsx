@@ -72,7 +72,7 @@ export default function SessionsPage() {
     const fetchSessions = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color)&order=total_votes.desc`,
+          `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color),cohosts:session_cohosts(profile:profiles(display_name))&order=total_votes.desc`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -161,7 +161,7 @@ export default function SessionsPage() {
   const refreshSessions = async () => {
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color)&order=total_votes.desc`,
+        `${SUPABASE_URL}/rest/v1/sessions?status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color),cohosts:session_cohosts(profile:profiles(display_name))&order=total_votes.desc`,
         {
           headers: {
             'apikey': SUPABASE_KEY,

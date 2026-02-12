@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { EditSessionModal } from '@/components/EditSessionModal'
+import { ManageCohostsSection } from '@/components/ManageCohostsSection'
 import { useAuth } from '@/hooks/useAuth'
 import { votesToCredits } from '@/lib/utils'
 
@@ -86,7 +87,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
   const [allUserVotes, setAllUserVotes] = React.useState<Record<string, number>>({})
   const [showShareToast, setShowShareToast] = React.useState(false)
   const [showCalendarMenu, setShowCalendarMenu] = React.useState(false)
-  const [showHostCard, setShowHostCard] = React.useState(false)
+  const [showHostCard, setShowHostCard] = React.useState<string | null>(null)
   const [showEditModal, setShowEditModal] = React.useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
@@ -100,7 +101,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
         setShowCalendarMenu(false)
       }
       if (hostCardRef.current && !hostCardRef.current.contains(event.target as Node)) {
-        setShowHostCard(false)
+        setShowHostCard(null)
       }
     }
 
@@ -124,7 +125,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
     const fetchSession = async () => {
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color)`,
+          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -269,7 +270,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
 
       // Refresh session to get updated vote counts
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color)`,
+        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -541,7 +542,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
             <Card className="p-6 relative">
               <div className="absolute top-4 right-4 flex gap-2">
                 {/* Edit button - show for session host or admin */}
-                {user && (session.host_id === user.id || profile?.is_admin) && (
+                {user && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || profile?.is_admin) && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -593,158 +594,123 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
 
                 <h1 className="text-2xl sm:text-3xl font-bold mb-4 break-words pr-28">{session.title}</h1>
 
-                {(session.host_name || session.host) && (
-                  <div className="relative" ref={hostCardRef}>
-                    <button
-                      onClick={() => setShowHostCard(!showHostCard)}
-                      className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
+                {(session.host_name || session.host) && (() => {
+                  const cohosts = (session.cohosts || [])
+                    .sort((a: any, b: any) => a.display_order - b.display_order)
+                    .filter((c: any) => c.profile)
+                  const allHosts = [
+                    session.host ? { ...session.host, _key: 'primary' } : null,
+                    ...cohosts.map((c: any) => ({ ...c.profile, _key: c.user_id })),
+                  ].filter(Boolean)
+                  const cohostNames = cohosts.map((c: any) => c.profile?.display_name).filter(Boolean)
+                  const primaryName = session.host?.display_name || session.host_name
+                  let hostedByText = `Hosted\u00a0by ${primaryName}`
+                  if (cohostNames.length === 1) {
+                    hostedByText += ` & ${cohostNames[0]}`
+                  } else if (cohostNames.length > 1) {
+                    hostedByText += ` & ${cohostNames.length} others`
+                  }
+
+                  return (
+                    <div className="relative" ref={hostCardRef}>
+                      <button
+                        onClick={() => setShowHostCard(showHostCard ? null : (allHosts[0]?._key || 'primary'))}
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
                       >
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                          {session.host?.avatar_url ? (
-                            <img
-                              src={session.host.avatar_url}
-                              alt={session.host.display_name || session.host_name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <span className="text-muted-foreground">Hosted&nbsp;by {session.host?.display_name || session.host_name}</span>
-                      </button>
-
-                      {/* Host Profile Card - Desktop: floating card, Mobile: bottom sheet style */}
-                      {showHostCard && (
-                        <>
-                          {/* Mobile overlay */}
-                          <div
-                            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-                            onClick={() => setShowHostCard(false)}
-                          />
-                          {/* Card */}
-                          <div className="fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:bottom-auto md:left-0 md:top-full md:mt-2 md:w-80 bg-card border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 md:slide-in-from-bottom-0">
-                            {/* Desktop close button */}
-                            <button
-                              onClick={() => setShowHostCard(false)}
-                              className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-muted transition-colors hidden md:flex"
-                              aria-label="Close"
-                            >
-                              <X className="h-4 w-4 text-muted-foreground" />
-                            </button>
-                            <div className="p-4 pr-10 md:pr-10">
-                              {/* Header with avatar */}
-                              <div className="flex items-start gap-3 mb-3">
-                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                                  {session.host?.avatar_url ? (
-                                    <img
-                                      src={session.host.avatar_url}
-                                      alt={session.host.display_name || session.host_name}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <User className="h-6 w-6 text-muted-foreground" />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-semibold truncate">
-                                    {session.host?.display_name || session.host_name}
-                                  </h4>
-                                  {session.host?.affiliation && (
-                                    <p className="text-sm text-muted-foreground truncate">
-                                      {session.host.affiliation}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Bio */}
-                              {session.host?.bio && (
-                                <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-                                  {session.host.bio}
-                                </p>
-                              )}
-
-                              {/* Building/What they're working on */}
-                              {session.host?.building && (
-                                <div className="text-sm mb-3">
-                                  <span className="text-muted-foreground">Building: </span>
-                                  <span>{session.host.building}</span>
-                                </div>
-                              )}
-
-                              {/* Interests */}
-                              {session.host?.interests && session.host.interests.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mb-3">
-                                  {session.host.interests.slice(0, 4).map((interest: string) => (
-                                    <Badge key={interest} variant="secondary" className="text-xs">
-                                      {interest}
-                                    </Badge>
-                                  ))}
-                                  {session.host.interests.length > 4 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      +{session.host.interests.length - 4}
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Telegram link */}
-                              {session.host?.telegram && (
-                                <a
-                                  href={`https://t.me/${session.host.telegram.replace('@', '')}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  @{session.host.telegram.replace('@', '')}
-                                </a>
-                              )}
-
-                              {/* ENS link */}
-                              {session.host?.ens && (
-                                <a
-                                  href={`https://app.ens.domains/${session.host.ens}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mt-1"
-                                >
-                                  <Hexagon className="h-3.5 w-3.5" />
-                                  {session.host.ens}
-                                </a>
-                              )}
-
-                              {/* View profile link */}
-                              {session.host?.id && (
-                                <Link
-                                  href={`/participants?highlight=${session.host.id}`}
-                                  className="block mt-3 pt-3 border-t text-sm text-center text-primary hover:underline"
-                                  onClick={() => setShowHostCard(false)}
-                                >
-                                  View full profile
-                                </Link>
-                              )}
-
-                              {/* If no host profile, show minimal info */}
-                              {!session.host && session.host_name && (
-                                <p className="text-sm text-muted-foreground italic">
-                                  Profile details not available
-                                </p>
+                        <div className="flex -space-x-2">
+                          {allHosts.map((host: any) => (
+                            <div key={host._key} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden ring-2 ring-background">
+                              {host.avatar_url ? (
+                                <img src={host.avatar_url} alt={host.display_name || ''} className="h-full w-full object-cover" />
+                              ) : (
+                                <User className="h-4 w-4 text-muted-foreground" />
                               )}
                             </div>
+                          ))}
+                        </div>
+                        <span className="text-muted-foreground">{hostedByText}</span>
+                      </button>
 
-                            {/* Mobile close button */}
-                            <button
-                              onClick={() => setShowHostCard(false)}
-                              className="md:hidden w-full py-3 border-t text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-                            >
-                              Close
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      {/* Host Profile Card */}
+                      {showHostCard && (() => {
+                        const activeHost = allHosts.find((h: any) => h._key === showHostCard) || allHosts[0]
+                        if (!activeHost) return null
+                        return (
+                          <>
+                            <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setShowHostCard(null)} />
+                            <div className="fixed md:absolute inset-x-4 bottom-4 md:inset-x-auto md:bottom-auto md:left-0 md:top-full md:mt-2 md:w-80 bg-card border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 md:slide-in-from-bottom-0">
+                              <button onClick={() => setShowHostCard(null)} className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-muted transition-colors hidden md:flex" aria-label="Close">
+                                <X className="h-4 w-4 text-muted-foreground" />
+                              </button>
+
+                              {/* Host tabs when multiple hosts */}
+                              {allHosts.length > 1 && (
+                                <div className="flex border-b">
+                                  {allHosts.map((host: any) => (
+                                    <button
+                                      key={host._key}
+                                      onClick={() => setShowHostCard(host._key)}
+                                      className={`flex-1 px-3 py-2 text-sm truncate transition-colors ${
+                                        showHostCard === host._key ? 'border-b-2 border-primary font-medium' : 'text-muted-foreground hover:text-foreground'
+                                      }`}
+                                    >
+                                      {host.display_name || 'Host'}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="p-4 pr-10 md:pr-10">
+                                <div className="flex items-start gap-3 mb-3">
+                                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                                    {activeHost.avatar_url ? (
+                                      <img src={activeHost.avatar_url} alt={activeHost.display_name || ''} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <User className="h-6 w-6 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold truncate">{activeHost.display_name || session.host_name}</h4>
+                                    {activeHost.affiliation && <p className="text-sm text-muted-foreground truncate">{activeHost.affiliation}</p>}
+                                  </div>
+                                </div>
+                                {activeHost.bio && <p className="text-sm text-muted-foreground mb-3 line-clamp-3">{activeHost.bio}</p>}
+                                {activeHost.building && (
+                                  <div className="text-sm mb-3"><span className="text-muted-foreground">Building: </span><span>{activeHost.building}</span></div>
+                                )}
+                                {activeHost.interests?.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-3">
+                                    {activeHost.interests.slice(0, 4).map((interest: string) => (
+                                      <Badge key={interest} variant="secondary" className="text-xs">{interest}</Badge>
+                                    ))}
+                                    {activeHost.interests.length > 4 && <Badge variant="outline" className="text-xs">+{activeHost.interests.length - 4}</Badge>}
+                                  </div>
+                                )}
+                                {activeHost.telegram && (
+                                  <a href={`https://t.me/${activeHost.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                                    <ExternalLink className="h-3.5 w-3.5" />@{activeHost.telegram.replace('@', '')}
+                                  </a>
+                                )}
+                                {activeHost.ens && (
+                                  <a href={`https://app.ens.domains/${activeHost.ens}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+                                    <Hexagon className="h-3.5 w-3.5" />{activeHost.ens}
+                                  </a>
+                                )}
+                                {activeHost.id && (
+                                  <Link href={`/participants?highlight=${activeHost.id}`} className="block mt-3 pt-3 border-t text-sm text-center text-primary hover:underline" onClick={() => setShowHostCard(null)}>
+                                    View full profile
+                                  </Link>
+                                )}
+                              </div>
+
+                              <button onClick={() => setShowHostCard(null)} className="md:hidden w-full py-3 border-t text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">Close</button>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
-                  )}
+                  )
+                })()}
                 </div>
 
               {/* Tags */}
@@ -952,8 +918,8 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                {/* Edit button for session host or admin */}
-                {user && (session.host_id === user.id || profile?.is_admin) && (
+                {/* Edit button for session host, co-host, or admin */}
+                {user && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || profile?.is_admin) && (
                   <Button
                     className="w-full justify-start"
                     variant="outline"
@@ -1097,7 +1063,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                 onSave={async () => {
                   // Refresh session data
                   const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),track:tracks(id,name,color)`,
+                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
                     {
                       headers: {
                         'apikey': SUPABASE_KEY,
@@ -1110,6 +1076,33 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                     if (data.length > 0) {
                       setSession(data[0])
                     }
+                  }
+                }}
+              />
+            )}
+
+            {/* Manage Co-Hosts - shown to primary host, co-host, or admin */}
+            {user && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || profile?.is_admin) && (
+              <ManageCohostsSection
+                sessionId={sessionId}
+                hostId={session.host_id}
+                userId={user.id}
+                isAdmin={!!profile?.is_admin}
+                cohosts={session.cohosts || []}
+                onCohostsChange={async () => {
+                  // Refresh session data
+                  const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
+                    {
+                      headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                      },
+                    }
+                  )
+                  if (response.ok) {
+                    const data = await response.json()
+                    if (data.length > 0) setSession(data[0])
                   }
                 }}
               />

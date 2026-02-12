@@ -23,9 +23,10 @@ function LoginContent() {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user && !authLoading) {
-      router.push('/dashboard')
+      const redirect = searchParams.get('redirect')
+      router.push(redirect || '/dashboard')
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading, router, searchParams])
 
   const [loggedOutMessage, setLoggedOutMessage] = React.useState(false)
 
