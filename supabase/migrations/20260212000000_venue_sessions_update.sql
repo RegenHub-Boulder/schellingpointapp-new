@@ -28,6 +28,7 @@ WHERE title LIKE '%ETH Localism Track%';
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-14', '2026-02-14 14:30:00-07', '2026-02-14 14:50:00-07', 'James Collab.land', 'session', false
 FROM venues v WHERE v.slug = 'etown'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 -- Note: Eugene's session gets moved - update it
@@ -37,8 +38,8 @@ SET title = 'Coordination Is Intelligence',
     host_name = 'James',
     topic_tags = ARRAY['coordination', 'collab.land', 'ai', 'community']
 WHERE host_name = 'Eugene'
-  AND venue_id = (SELECT id FROM venues WHERE slug = 'etown')
-  AND time_slot_id = (SELECT id FROM time_slots WHERE start_time = '2026-02-14 14:30:00-07' AND venue_id = (SELECT id FROM venues WHERE slug = 'etown'));
+  AND venue_id = (SELECT id FROM venues WHERE slug = 'etown' LIMIT 1)
+  AND time_slot_id = (SELECT id FROM time_slots WHERE start_time = '2026-02-14 14:30:00-07' AND venue_id = (SELECT id FROM venues WHERE slug = 'etown' LIMIT 1) LIMIT 1);
 
 -- =============================================================================
 -- ADD MISSING TIME SLOTS FOR REGEN HUB
@@ -46,26 +47,28 @@ WHERE host_name = 'Eugene'
 
 -- Friday Regen Hub - Update times to match spreadsheet
 UPDATE time_slots SET start_time = '2026-02-13 13:00:00-07', end_time = '2026-02-13 13:25:00-07', label = 'AI Track - Devinder Sodhi'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 13:00:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 13:00:00-07';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-13', '2026-02-13 13:30:00-07', '2026-02-13 13:55:00-07', 'Parnassus House', 'session', false
 FROM venues v WHERE v.slug = 'regen-hub'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 -- Saturday Regen Hub - Add Nico Gallardo slot
 UPDATE time_slots SET label = 'Nico Gallardo - Octant'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-14 14:10:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-14 14:10:00-07';
 
 -- Add January Jones slot
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-14', '2026-02-14 14:45:00-07', '2026-02-14 15:50:00-07', 'Blockchain Journalism Roundtable', 'session', false
 FROM venues v WHERE v.slug = 'regen-hub'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 -- Sunday Regen Hub - Add Zcash workshop slot
 UPDATE time_slots SET start_time = '2026-02-15 12:05:00-07', end_time = '2026-02-15 13:05:00-07', label = 'Mylo - Zcash Workshop'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-15 12:25:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-15 12:25:00-07';
 
 -- =============================================================================
 -- REGEN HUB SESSIONS - FRIDAY
@@ -89,10 +92,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-13 11:15:00-07';
+  AND ts.start_time = '2026-02-13 11:15:00-07'
+LIMIT 1;
 
 -- 11:50-12:55: AI Track Sessions
 INSERT INTO sessions (
@@ -113,11 +117,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 11:50:00-07'
-  AND t.slug = 'ai-society';
+  AND t.slug = 'ai-society'
+LIMIT 1;
 
 INSERT INTO sessions (
   title, description, format, duration, host_id, host_name, topic_tags,
@@ -137,11 +143,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 12:25:00-07'
-  AND t.slug = 'ai-society';
+  AND t.slug = 'ai-society'
+LIMIT 1;
 
 -- 13:00-13:25: Devinder Sodhi - AI Success in the Real World
 INSERT INTO sessions (
@@ -162,11 +170,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 13:00:00-07'
-  AND t.slug = 'ai-society';
+  AND t.slug = 'ai-society'
+LIMIT 1;
 
 -- 13:30-13:55: Paul and Nico - Parnassus House
 INSERT INTO sessions (
@@ -186,10 +196,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-13 13:30:00-07';
+  AND ts.start_time = '2026-02-13 13:30:00-07'
+LIMIT 1;
 
 -- 14:00-14:40: Austin Griffith Workshop
 INSERT INTO sessions (
@@ -209,10 +220,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-13 14:00:00-07';
+  AND ts.start_time = '2026-02-13 14:00:00-07'
+LIMIT 1;
 
 -- 14:45-15:15: Jon Bo
 INSERT INTO sessions (
@@ -232,10 +244,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-13 14:45:00-07';
+  AND ts.start_time = '2026-02-13 14:45:00-07'
+LIMIT 1;
 
 -- 15:20-15:50: German - Virtual Blockchains Workshop
 INSERT INTO sessions (
@@ -255,10 +268,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-13 15:20:00-07';
+  AND ts.start_time = '2026-02-13 15:20:00-07'
+LIMIT 1;
 
 -- =============================================================================
 -- REGEN HUB SESSIONS - SATURDAY
@@ -282,10 +296,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-14 11:15:00-07';
+  AND ts.start_time = '2026-02-14 11:15:00-07'
+LIMIT 1;
 
 -- 12:05-14:05: DAO Tooling Track Sessions
 INSERT INTO sessions (
@@ -306,11 +321,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 12:20:00-07'
-  AND t.slug = 'dao-tooling';
+  AND t.slug = 'dao-tooling'
+LIMIT 1;
 
 INSERT INTO sessions (
   title, description, format, duration, host_id, host_name, topic_tags,
@@ -330,11 +347,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 13:10:00-07'
-  AND t.slug = 'dao-tooling';
+  AND t.slug = 'dao-tooling'
+LIMIT 1;
 
 -- 14:10-14:40: Nico Gallardo - Octant
 INSERT INTO sessions (
@@ -355,11 +374,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 14:10:00-07'
-  AND t.slug = 'pgf';
+  AND t.slug = 'pgf'
+LIMIT 1;
 
 -- 14:45-15:50: January Jones & Brad Keoun - Blockchain Journalism Roundtable
 INSERT INTO sessions (
@@ -379,10 +400,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-14 14:45:00-07';
+  AND ts.start_time = '2026-02-14 14:45:00-07'
+LIMIT 1;
 
 -- =============================================================================
 -- REGEN HUB SESSIONS - SUNDAY
@@ -407,11 +429,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-15 12:05:00-07'
-  AND t.slug = 'privacy';
+  AND t.slug = 'privacy'
+LIMIT 1;
 
 -- 13:10-14:05: Alexandre - Fhenix Workshop
 INSERT INTO sessions (
@@ -432,11 +456,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-15 13:10:00-07'
-  AND t.slug = 'privacy';
+  AND t.slug = 'privacy'
+LIMIT 1;
 
 -- 15:10-15:50: Naomi Brockwell Workshop
 INSERT INTO sessions (
@@ -457,11 +483,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-15 15:10:00-07'
-  AND t.slug = 'privacy';
+  AND t.slug = 'privacy'
+LIMIT 1;
 
 -- 15:55-16:25: Eric DeCourcy - OpenZeppelin Workshop
 INSERT INTO sessions (
@@ -481,10 +509,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'regen-hub'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-15 15:55:00-07';
+  AND ts.start_time = '2026-02-15 15:55:00-07'
+LIMIT 1;
 
 -- =============================================================================
 -- TERRIBLE TURTLE SESSIONS - FRIDAY (Main Room)
@@ -509,11 +538,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 10:30:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- 11:15-11:45: Collaborative Mural Kickoff
 INSERT INTO sessions (
@@ -534,11 +565,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 11:15:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- 11:50-12:20: OnchainCreator Challenge
 INSERT INTO sessions (
@@ -559,16 +592,19 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 11:50:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- Add 12:30-13:00 time slot for Faces of EthBoulder
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-13', '2026-02-13 12:30:00-07', '2026-02-13 13:00:00-07', 'Faces of EthBoulder', 'session', false
 FROM venues v WHERE v.slug = 'terrible-turtle'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 -- 12:30-13:00: Faces of EthBoulder
@@ -590,11 +626,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 12:30:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- 14:00-14:40: Gitcoin GG25 Design Session
 INSERT INTO sessions (
@@ -615,11 +653,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 14:00:00-07'
-  AND t.slug = 'pgf';
+  AND t.slug = 'pgf'
+LIMIT 1;
 
 -- 15:20-15:50: Under The Gun
 INSERT INTO sessions (
@@ -640,11 +680,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 15:20:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- =============================================================================
 -- TERRIBLE TURTLE SESSIONS - SATURDAY (Main Room)
@@ -668,10 +710,11 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-14 12:25:00-07';
+  AND ts.start_time = '2026-02-14 12:25:00-07'
+LIMIT 1;
 
 -- 13:35-14:05: DeSci Workshop - Rodrigo
 INSERT INTO sessions (
@@ -692,11 +735,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 13:35:00-07'
-  AND t.slug = 'desci';
+  AND t.slug = 'desci'
+LIMIT 1;
 
 -- 14:10-14:40: On-chain Organizations Track Session 1
 INSERT INTO sessions (
@@ -717,11 +762,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 14:10:00-07'
-  AND t.slug = 'onchain-orgs';
+  AND t.slug = 'onchain-orgs'
+LIMIT 1;
 
 -- 14:45-15:15: On-chain Organizations Track Session 2
 INSERT INTO sessions (
@@ -742,11 +789,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 14:45:00-07'
-  AND t.slug = 'onchain-orgs';
+  AND t.slug = 'onchain-orgs'
+LIMIT 1;
 
 -- =============================================================================
 -- TERRIBLE TURTLE SESSIONS - SUNDAY (Main Room)
@@ -756,6 +805,7 @@ WHERE v.slug = 'terrible-turtle'
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-15', '2026-02-15 12:05:00-07', '2026-02-15 12:35:00-07', 'BLOCKCHANGE Workshop', 'session', false
 FROM venues v WHERE v.slug = 'terrible-turtle'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 -- 12:05-12:35: BLOCKCHANGE Workshop
@@ -776,14 +826,15 @@ SELECT
   false,
   v.id,
   ts.id
-FROM venues v, time_slots ts
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
-  AND ts.start_time = '2026-02-15 12:05:00-07';
+  AND ts.start_time = '2026-02-15 12:05:00-07'
+LIMIT 1;
 
 -- 13:00-15:15: PGF - Sejal and team (Update existing time slot)
 UPDATE time_slots SET end_time = '2026-02-15 15:15:00-07', label = 'PGF Track - Sejal & Team'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-15 13:00:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-15 13:00:00-07';
 
 INSERT INTO sessions (
   title, description, format, duration, host_id, host_name, topic_tags,
@@ -803,11 +854,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-15 13:00:00-07'
-  AND t.slug = 'pgf';
+  AND t.slug = 'pgf'
+LIMIT 1;
 
 -- 15:20-15:50: Creating your Ultimate Fighting Bot
 INSERT INTO sessions (
@@ -828,28 +881,20 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-15 15:20:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- =============================================================================
 -- TERRIBLE TURTLE LOUNGE ROOM SESSIONS
 -- =============================================================================
 
--- Friday Lounge: How AI Copies Art by Devinder Sodhi
-INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-13', '2026-02-13 12:30:00-07', '2026-02-13 13:00:00-07', 'How AI Copies Art', 'session', false
-FROM venues v WHERE v.slug = 'terrible-turtle'
-ON CONFLICT DO NOTHING;
-
 -- Friday: Creativity as Cornerstone by Devinder Sodhi & Lexi Benak
-INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-13', '2026-02-13 15:20:00-07', '2026-02-13 15:50:00-07', 'Creativity as Cornerstone', 'session', false
-FROM venues v WHERE v.slug = 'terrible-turtle'
-ON CONFLICT DO NOTHING;
-
+-- Note: Using the existing 15:20 slot which may have duplicate purposes
 INSERT INTO sessions (
   title, description, format, duration, host_id, host_name, topic_tags,
   status, session_type, is_votable, venue_id, time_slot_id, track_id
@@ -868,16 +913,22 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-13 15:20:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+  AND NOT EXISTS (
+    SELECT 1 FROM sessions s WHERE s.title = 'Creativity as a Cornerstone of Company Building'
+  )
+LIMIT 1;
 
 -- Saturday Lounge: Zen Tea Ceremony by Yi Shan
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-14', '2026-02-14 11:30:00-07', '2026-02-14 12:45:00-07', 'Zen Tea Ceremony - Yi Shan', 'session', false
 FROM venues v WHERE v.slug = 'terrible-turtle'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 INSERT INTO sessions (
@@ -898,16 +949,19 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 11:30:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- Sunday Lounge: Artizen Awards Livestream
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-15', '2026-02-15 11:00:00-07', '2026-02-15 12:30:00-07', 'Artizen Awards Livestream', 'session', false
 FROM venues v WHERE v.slug = 'terrible-turtle'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 INSERT INTO sessions (
@@ -928,11 +982,13 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'terrible-turtle'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-15 11:00:00-07'
-  AND t.slug = 'creativity';
+  AND t.slug = 'creativity'
+LIMIT 1;
 
 -- =============================================================================
 -- RIVERSIDE VENUE - ETH LOCALISM
@@ -942,6 +998,7 @@ WHERE v.slug = 'terrible-turtle'
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-14', '2026-02-14 13:00:00-07', '2026-02-14 17:00:00-07', 'ETH Localism Sessions', 'track', false
 FROM venues v WHERE v.slug = 'riverside'
+LIMIT 1
 ON CONFLICT DO NOTHING;
 
 INSERT INTO sessions (
@@ -962,66 +1019,68 @@ SELECT
   v.id,
   ts.id,
   t.id
-FROM venues v, time_slots ts, tracks t
+FROM venues v
+JOIN time_slots ts ON ts.venue_id = v.id
+CROSS JOIN tracks t
 WHERE v.slug = 'riverside'
-  AND ts.venue_id = v.id
   AND ts.start_time = '2026-02-14 13:00:00-07'
-  AND t.slug = 'eth-localism';
+  AND t.slug = 'eth-localism'
+LIMIT 1;
 
 -- =============================================================================
 -- UPDATE TIME SLOT LABELS TO MATCH NEW SESSIONS
 -- =============================================================================
 
 UPDATE time_slots SET label = 'Shay - Techstars Boulder'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 11:15:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 11:15:00-07';
 
 UPDATE time_slots SET label = 'AI Track Session 1'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 11:50:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 11:50:00-07';
 
 UPDATE time_slots SET label = 'AI Track Session 2'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 12:25:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 12:25:00-07';
 
 UPDATE time_slots SET label = 'Austin Griffith Workshop'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 14:00:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 14:00:00-07';
 
 UPDATE time_slots SET label = 'Jon Bo'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 14:45:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 14:45:00-07';
 
 UPDATE time_slots SET label = 'German - Virtual Blockchains Workshop'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-13 15:20:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-13 15:20:00-07';
 
 UPDATE time_slots SET label = 'Kevin Owocki Workshop'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-14 11:15:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-14 11:15:00-07';
 
 UPDATE time_slots SET label = 'DAO Tooling Track 1'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-14 12:20:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-14 12:20:00-07';
 
 UPDATE time_slots SET label = 'DAO Tooling Track 2'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub') AND start_time = '2026-02-14 13:10:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'regen-hub' LIMIT 1) AND start_time = '2026-02-14 13:10:00-07';
 
 UPDATE time_slots SET label = 'Creative Track Kickoff'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-13 10:30:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-13 10:30:00-07';
 
 UPDATE time_slots SET label = 'Collaborative Mural'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-13 11:15:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-13 11:15:00-07';
 
 UPDATE time_slots SET label = 'OnchainCreator Challenge'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-13 11:50:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-13 11:50:00-07';
 
 UPDATE time_slots SET label = 'Gitcoin GG25 Design Session'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-13 14:00:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-13 14:00:00-07';
 
 UPDATE time_slots SET label = 'Under The Gun'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-13 15:20:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-13 15:20:00-07';
 
 UPDATE time_slots SET label = 'COLTON Postquant Labs'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-14 12:25:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-14 12:25:00-07';
 
 UPDATE time_slots SET label = 'DeSci Workshop - Rodrigo'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-14 13:35:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-14 13:35:00-07';
 
 UPDATE time_slots SET label = 'Onchain Orgs Session 1'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-14 14:10:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-14 14:10:00-07';
 
 UPDATE time_slots SET label = 'Onchain Orgs Session 2'
-WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle') AND start_time = '2026-02-14 14:45:00-07';
+WHERE venue_id = (SELECT id FROM venues WHERE slug = 'terrible-turtle' LIMIT 1) AND start_time = '2026-02-14 14:45:00-07';
