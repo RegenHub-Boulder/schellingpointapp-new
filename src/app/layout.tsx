@@ -8,8 +8,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-    'http://localhost:3000'
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
   ),
   title: 'Schelling Point - EthBoulder 2026',
   description: 'The unconference for EthBoulder 2026. Propose sessions, vote with quadratic voting, and shape the schedule together.',
