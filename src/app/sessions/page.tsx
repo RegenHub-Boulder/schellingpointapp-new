@@ -17,6 +17,11 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 const formats = ['all', 'talk', 'workshop', 'discussion', 'panel', 'demo']
+const statusOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'proposed', label: 'Proposed' },
+]
 const sortOptions = [
   { value: 'votes', label: 'Most Voted' },
   { value: 'recent', label: 'Recent' },
@@ -49,6 +54,7 @@ export default function SessionsPage() {
   const [search, setSearch] = React.useState('')
   const [format, setFormat] = React.useState('all')
   const [track, setTrack] = React.useState<string>('all')
+  const [status, setStatus] = React.useState('all')
   const [sort, setSort] = React.useState('votes')
   const [showFilters, setShowFilters] = React.useState(false)
 
@@ -362,6 +368,13 @@ export default function SessionsPage() {
       filtered = filtered.filter((s) => s.track?.id === track)
     }
 
+    // Status filter (scheduled vs proposed/approved)
+    if (status === 'scheduled') {
+      filtered = filtered.filter((s) => s.status === 'scheduled')
+    } else if (status === 'proposed') {
+      filtered = filtered.filter((s) => s.status === 'approved')
+    }
+
     // Sort
     if (sort === 'votes') {
       filtered = [...filtered].sort((a, b) => b.total_votes - a.total_votes)
@@ -374,7 +387,7 @@ export default function SessionsPage() {
     }
 
     return filtered
-  }, [sessions, search, format, track, sort])
+  }, [sessions, search, format, track, status, sort])
 
   const favoriteCount = favorites.size
 
@@ -479,6 +492,26 @@ export default function SessionsPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                <div className="flex gap-1.5">
+                  {statusOptions.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => setStatus(s.value)}
+                      className={cn(
+                        'px-3 py-1.5 text-sm rounded-md transition-colors',
+                        status === s.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background border hover:bg-accent'
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
