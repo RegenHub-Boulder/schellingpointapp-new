@@ -100,7 +100,7 @@ curl -H "x-api-key: YOUR_API_KEY" \
         "id": "...",
         "display_name": "Alice Smith",
         "bio": "Cryptography researcher...",
-        "avatar_url": null,
+
         "affiliation": "EFF",
         "building": "Privacy Tech",
         "telegram": "@alice",
@@ -165,7 +165,7 @@ GET /api/v1/profiles
 Returns all profiles ordered by display name.
 
 **Fields returned:**
-`id`, `display_name`, `bio`, `avatar_url`, `affiliation`, `building`, `telegram`, `ens`, `interests`, `is_admin`, `created_at`
+`id`, `display_name`, `bio`, `affiliation`, `building`, `telegram`, `ens`, `interests`, `is_admin`, `created_at`
 
 ```bash
 curl -H "x-api-key: YOUR_API_KEY" \

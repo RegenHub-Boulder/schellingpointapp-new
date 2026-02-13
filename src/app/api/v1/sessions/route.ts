@@ -16,7 +16,7 @@ const VALID_STATUSES = ['pending', 'approved', 'rejected', 'scheduled']
 function buildSelect(includes: string[]): string {
   const parts = [SESSION_FIELDS]
   if (includes.includes('host')) {
-    parts.push('host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)')
+    parts.push('host:profiles!host_id(id,display_name,bio,affiliation,building,telegram,ens,interests)')
   }
   if (includes.includes('track')) {
     parts.push('track:tracks(id,name,slug,color)')
@@ -28,7 +28,7 @@ function buildSelect(includes: string[]): string {
     parts.push('time_slot:time_slots(id,start_time,end_time,label,is_break,day_date,slot_type)')
   }
   if (includes.includes('cohosts')) {
-    parts.push('cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation))')
+    parts.push('cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,affiliation))')
   }
   return parts.join(',')
 }

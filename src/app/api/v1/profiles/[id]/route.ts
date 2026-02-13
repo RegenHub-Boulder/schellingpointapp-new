@@ -10,7 +10,7 @@ import {
   parseIncludes,
 } from '@/lib/api/response'
 
-const PROFILE_FIELDS = 'id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests,is_admin,created_at'
+const PROFILE_FIELDS = 'id,display_name,bio,affiliation,building,telegram,ens,interests,is_admin,created_at'
 const VALID_INCLUDES = ['sessions']
 
 export async function GET(
