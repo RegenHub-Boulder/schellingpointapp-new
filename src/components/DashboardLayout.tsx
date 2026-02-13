@@ -215,9 +215,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* User Actions */}
             <div className="flex items-center gap-3">
               {!user && (
-                <Button size="sm" asChild>
-                  <Link href="/login">Sign In</Link>
-                </Button>
+                <Link
+                  href="/login"
+                  className="flex items-center justify-center gap-1.5 px-2 md:px-3 py-2.5 min-h-[44px] min-w-[44px] text-xs md:text-sm font-medium rounded-md whitespace-nowrap bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
+                >
+                  Sign In
+                </Link>
               )}
               {user && (
                 <>
