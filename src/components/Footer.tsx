@@ -75,6 +75,9 @@ export function Footer({ className, variant = 'default' }: FooterProps) {
 
               {/* Text Links */}
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <Link href="/codeofconduct" className="hover:text-primary transition-colors">
+                  Code of Conduct
+                </Link>
                 <Link href="/privacy" className="hover:text-primary transition-colors">
                   Privacy
                 </Link>
@@ -225,6 +228,9 @@ export function Footer({ className, variant = 'default' }: FooterProps) {
             </span>
             <span className="hidden sm:inline text-border">•</span>
             <div className="flex items-center gap-4">
+              <Link href="/codeofconduct" className="hover:text-primary transition-colors">
+                Code of Conduct
+              </Link>
               <Link href="/privacy" className="hover:text-primary transition-colors">
                 Privacy
               </Link>
