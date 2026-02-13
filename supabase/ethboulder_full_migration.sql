@@ -60,6 +60,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type TEXT DEFAULT 'propose
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS is_votable BOOLEAN DEFAULT TRUE;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS self_hosted_start_time TIMESTAMPTZ;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS self_hosted_end_time TIMESTAMPTZ;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS telegram_group_url TEXT;
 
 -- session_type values: 'curated', 'proposed', 'workshop', 'track_reserved'
 ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_session_type_check;

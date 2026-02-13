@@ -14,6 +14,9 @@ import {
   Heart,
   Zap,
   Mic,
+  Brain,
+  Send,
+  ExternalLink,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -479,6 +482,45 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Knowledge Graph Banner */}
+        <Card className="overflow-hidden border-amber-200/50 dark:border-amber-800/50">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-amber-500/10 rounded-xl">
+                <Brain className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg mb-1">EthBoulder Knowledge Commons</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Explore the collective knowledge graph powered by bonfires.ai. Share recordings, links, and notes from sessions to grow our shared intelligence.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href="https://boulder.app.bonfires.ai/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="bg-amber-600 hover:bg-amber-700 text-white gap-2">
+                      Explore Knowledge Graph
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </a>
+                  <a
+                    href="https://t.me/ethboulder_bot"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="outline" className="gap-2">
+                      <Send className="h-4 w-4" />
+                      Chat with Agent
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* User's Proposed Sessions */}
         {user && userProposedSessions.length > 0 && (

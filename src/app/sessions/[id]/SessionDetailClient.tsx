@@ -26,6 +26,8 @@ import {
   Trash2,
   AlertTriangle,
   X,
+  Brain,
+  Send,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -847,6 +849,34 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                     </div>
                   )}
                 </div>
+                {session.telegram_group_url && (
+                  <a
+                    href={session.telegram_group_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 mt-4 px-4 py-2.5 bg-[#0088cc] hover:bg-[#006699] text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <Send className="h-4 w-4" />
+                    Join Telegram Group
+                    <ExternalLink className="h-3.5 w-3.5 ml-auto" />
+                  </a>
+                )}
+              </Card>
+            )}
+
+            {/* Telegram fallback when no venue/schedule card */}
+            {!session.venue && !session.time_slot && !session.is_self_hosted && session.telegram_group_url && (
+              <Card className="p-4">
+                <a
+                  href={session.telegram_group_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#0088cc] hover:bg-[#006699] text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  <Send className="h-4 w-4" />
+                  Join Telegram Group
+                  <ExternalLink className="h-3.5 w-3.5 ml-auto" />
+                </a>
               </Card>
             )}
 
@@ -1016,6 +1046,31 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                     )}
                   </div>
                 )}
+                {/* Add Telegram Group button for host, co-host, or admin (when no group URL set) */}
+                {user && !session.telegram_group_url && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || profile?.is_admin) && (
+                  <Button
+                    className="w-full justify-start gap-2"
+                    variant="outline"
+                    onClick={() => setShowEditModal(true)}
+                  >
+                    <Send className="h-4 w-4" />
+                    Add Telegram Group
+                  </Button>
+                )}
+                {/* Knowledge Graph button for host, co-host, or admin */}
+                {user && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || profile?.is_admin) && (
+                  <a
+                    href="https://t.me/ethboulder_bot"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full"
+                  >
+                    <Button variant="outline" className="w-full justify-start gap-2">
+                      <Brain className="h-4 w-4" />
+                      Add to Knowledge Graph
+                    </Button>
+                  </a>
+                )}
                 {/* Delete button for session host or admin */}
                 {user && (session.host_id === user.id || profile?.is_admin) && (
                   <Button
@@ -1109,6 +1164,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                   custom_location: session.custom_location,
                   self_hosted_start_time: session.self_hosted_start_time,
                   self_hosted_end_time: session.self_hosted_end_time,
+                  telegram_group_url: session.telegram_group_url,
                 }}
                 hostId={session.host_id}
                 hostName={session.host_name}

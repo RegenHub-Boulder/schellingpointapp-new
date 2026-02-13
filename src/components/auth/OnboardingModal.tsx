@@ -20,6 +20,7 @@ import {
   Mic,
   Calendar,
   Coins,
+  Brain,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -95,6 +96,14 @@ const introSlides = [
     title: 'Propose a Session',
     description: 'Have something to share? Propose your own session! Choose a format (talk, workshop, discussion, panel, or demo) and submit for review.',
     tip: 'Sessions are reviewed by admins before appearing for voting.',
+  },
+  {
+    icon: Brain,
+    iconColor: 'text-amber-500',
+    iconBg: 'bg-amber-500/10',
+    title: 'Knowledge Commons',
+    description: 'EthBoulder is building a shared knowledge graph powered by bonfires.ai. Sessions may be recorded to share with the community — hosts must ask for verbal consent from all participants before recording. It\'s completely fine if a group decides not to record, and no one should feel pressured to consent.',
+    tip: 'Be aware of active consent at all times. Chat with @ethboulder_bot on Telegram to contribute!',
   },
 ]
 

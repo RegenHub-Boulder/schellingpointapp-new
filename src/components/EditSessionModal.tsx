@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { X, Loader2, Search, MapPin, Clock } from 'lucide-react'
+import { X, Loader2, Search, MapPin, Clock, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -209,6 +209,7 @@ interface EditSessionModalProps {
     custom_location?: string | null
     self_hosted_start_time?: string | null
     self_hosted_end_time?: string | null
+    telegram_group_url?: string | null
   }
   onSave: () => void
   isAdmin?: boolean
@@ -232,6 +233,8 @@ export function EditSessionModal({
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  const [telegramGroupUrl, setTelegramGroupUrl] = React.useState(session?.telegram_group_url || '')
+
   // Self-hosted state
   const [isSelfHosted, setIsSelfHosted] = React.useState(session.is_self_hosted || false)
   const [customLocation, setCustomLocation] = React.useState(session.custom_location || '')
@@ -251,6 +254,7 @@ export function EditSessionModal({
     setFormat(session.format)
     setTags(session.topic_tags || [])
     setTrackId(session.track_id || null)
+    setTelegramGroupUrl(session?.telegram_group_url || '')
     setIsSelfHosted(session.is_self_hosted || false)
     setCustomLocation(session.custom_location || '')
     setSelfHostedDay(parseTimestamp(session.self_hosted_start_time).day)
@@ -325,6 +329,7 @@ export function EditSessionModal({
           ? buildTimestamp(selfHostedDay, selfHostedStartTime) : null,
         self_hosted_end_time: isSelfHosted && selfHostedDay && selfHostedEndTime
           ? buildTimestamp(selfHostedDay, selfHostedEndTime) : null,
+        telegram_group_url: telegramGroupUrl.trim() || null,
       }
 
       if (isSelfHosted) {
@@ -701,6 +706,23 @@ export function EditSessionModal({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Telegram Group URL */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Send className="h-4 w-4" />
+              Telegram Group URL (optional)
+            </label>
+            <Input
+              type="url"
+              placeholder="https://t.me/your_group"
+              value={telegramGroupUrl}
+              onChange={(e) => setTelegramGroupUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Add a Telegram group link for attendees to join
+            </p>
           </div>
 
           {/* Tags */}
