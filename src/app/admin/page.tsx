@@ -15,6 +15,8 @@ import {
   Settings,
   LayoutGrid,
   Trash2,
+  Mail,
+  MailCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -54,6 +56,7 @@ interface Session {
   time_preferences: string[] | null
   venue_id: string | null
   time_slot_id: string | null
+  host_notified_at: string | null
   venue?: { id: string; name: string } | null
   time_slot?: { id: string; label: string; start_time: string } | null
 }
@@ -240,6 +243,12 @@ export default function AdminPage() {
             : s
         )
       )
+
+      // Fire-and-forget: notify host via email
+      fetch(`/api/sessions/${sessionId}/notify-host`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {})
     } catch (err) {
       console.error('Error scheduling session:', err)
     }
@@ -307,6 +316,32 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Error deleting session:', err)
+    }
+  }
+
+  const handleNotifyHost = async (sessionId: string) => {
+    const token = getAccessToken()
+    if (!token) return
+
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/notify-host`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.sent) {
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === sessionId
+                ? { ...s, host_notified_at: new Date().toISOString() }
+                : s
+            )
+          )
+        }
+      }
+    } catch (err) {
+      console.error('Error notifying host:', err)
     }
   }
 
@@ -466,6 +501,7 @@ export default function AdminPage() {
                     session={session}
                     onUnschedule={() => handleUnschedule(session.id)}
                     onDelete={() => handleDelete(session.id)}
+                    onNotify={() => handleNotifyHost(session.id)}
                   />
                 ))
               )}
@@ -773,10 +809,12 @@ function ScheduledSessionCard({
   session,
   onUnschedule,
   onDelete,
+  onNotify,
 }: {
   session: Session
   onUnschedule: () => void
   onDelete: () => void
+  onNotify: () => void
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
 
@@ -791,6 +829,17 @@ function ScheduledSessionCard({
               </Badge>
               <span className="text-sm text-muted-foreground">{session.duration} min</span>
               <span className="text-sm font-medium text-primary">{session.total_votes} votes</span>
+              {session.host_notified_at ? (
+                <Badge variant="outline" className="text-xs border-green-500/50 text-green-700 dark:text-green-400 bg-green-500/10">
+                  <MailCheck className="h-3 w-3 mr-1" />
+                  Notified
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10">
+                  <Mail className="h-3 w-3 mr-1" />
+                  Not notified
+                </Badge>
+              )}
             </div>
             <h3 className="font-semibold">{session.title}</h3>
             {session.host_name && (
@@ -815,6 +864,12 @@ function ScheduledSessionCard({
             <Button size="sm" variant="outline" onClick={onUnschedule} className="flex-1 sm:flex-none">
               Unschedule
             </Button>
+            {!session.host_notified_at && (
+              <Button size="sm" variant="outline" onClick={onNotify} className="flex-1 sm:flex-none">
+                <Mail className="h-4 w-4 mr-1" />
+                Send Notification
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"

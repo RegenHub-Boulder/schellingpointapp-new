@@ -207,6 +207,12 @@ export default function AdminSchedulePage() {
             : s
         )
       )
+
+      // Fire-and-forget: notify host via email
+      fetch(`/api/sessions/${draggedSession.id}/notify-host`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {})
     } catch (err) {
       console.error('Error scheduling session:', err)
     }

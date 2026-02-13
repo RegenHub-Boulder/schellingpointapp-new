@@ -72,6 +72,7 @@ CREATE TABLE sessions (
   self_hosted_start_time TIMESTAMPTZ,
   self_hosted_end_time TIMESTAMPTZ,
   telegram_group_url TEXT,
+  host_notified_at TIMESTAMPTZ,
   total_votes INTEGER DEFAULT 0,
   total_credits INTEGER DEFAULT 0,
   voter_count INTEGER DEFAULT 0,
