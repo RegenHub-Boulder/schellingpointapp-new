@@ -25,9 +25,6 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
 interface Participant {
   id: string
   email: string
@@ -81,18 +78,11 @@ function ParticipantsContent() {
   React.useEffect(() => {
     const fetchParticipants = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/profiles?select=*&order=display_name`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const response = await fetch('/api/v1/profiles')
 
         if (response.ok) {
-          setParticipants(await response.json())
+          const json = await response.json()
+          setParticipants(json.data || json)
         }
       } catch (err) {
         console.error('Error fetching participants:', err)

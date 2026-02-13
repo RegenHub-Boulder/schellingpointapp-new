@@ -148,24 +148,20 @@ export default function ProposePage() {
     setError(null)
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/sessions`, {
+      const response = await fetch('/api/v1/sessions', {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
         },
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
           format,
           duration,
-          host_id: user.id,
           host_name: profile.display_name || profile.email,
           topic_tags: tags.length > 0 ? tags : null,
           time_preferences: timePreferences.length > 0 ? timePreferences : null,
-          status: 'pending',
           is_self_hosted: isSelfHosted,
           custom_location: isSelfHosted ? customLocation.trim() || null : null,
           self_hosted_start_time: isSelfHosted && selfHostedDay && selfHostedStartTime

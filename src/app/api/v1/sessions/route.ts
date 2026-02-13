@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { validateApiKey } from '@/lib/api/auth'
+import { getUserFromRequest } from '@/lib/api/getUser'
 import {
   apiSuccess,
   unauthorized,
@@ -70,7 +71,49 @@ export async function GET(request: Request) {
   return apiSuccess(data, data?.length ?? 0)
 }
 
-export async function POST() { return methodNotAllowed() }
+const ALLOWED_FIELDS = [
+  'title', 'description', 'format', 'duration', 'host_name',
+  'topic_tags', 'time_preferences', 'status', 'is_self_hosted',
+  'custom_location', 'self_hosted_start_time', 'self_hosted_end_time',
+  'track_id', 'telegram_group_url',
+]
+
+export async function POST(request: Request) {
+  const user = await getUserFromRequest(request)
+  if (!user) return unauthorized()
+
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return badRequest('Invalid JSON body')
+  }
+
+  if (!body.title || typeof body.title !== 'string' || !body.title.trim()) {
+    return badRequest('Title is required')
+  }
+
+  // Build sanitized insert object — only allow known fields
+  const insert: Record<string, unknown> = { host_id: user.id }
+  for (const field of ALLOWED_FIELDS) {
+    if (body[field] !== undefined) {
+      insert[field] = body[field]
+    }
+  }
+  // Override host_name from body (proposer provides their display name)
+  if (body.host_name) insert.host_name = body.host_name
+  // Force status to pending for user-submitted proposals
+  insert.status = 'pending'
+
+  const supabase = await createAdminClient()
+  const { error } = await supabase.from('sessions').insert(insert)
+
+  if (error) {
+    return badRequest(error.message)
+  }
+
+  return new Response(null, { status: 201 })
+}
 export async function PUT() { return methodNotAllowed() }
 export async function PATCH() { return methodNotAllowed() }
 export async function DELETE() { return methodNotAllowed() }
