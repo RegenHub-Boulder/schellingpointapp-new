@@ -2,10 +2,11 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Loader2, Calendar, MapPin, Clock, User } from 'lucide-react'
+import { Loader2, Calendar, MapPin, Clock, User, Search } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { useTracks } from '@/hooks/useTracks'
@@ -71,6 +72,7 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null)
   const [trackFilter, setTrackFilter] = React.useState<string>('all')
   const [sortBy, setSortBy] = React.useState<'time' | 'venue'>('time')
+  const [search, setSearch] = React.useState('')
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -138,16 +140,26 @@ export default function SchedulePage() {
     return timeSlots.filter((slot) => getDateKey(slot.start_time) === selectedDay)
   }, [timeSlots, selectedDay])
 
-  // Filter sessions by selected day and track
+  // Filter sessions by selected day, track, and search
   const filteredSessions = React.useMemo(() => {
-    return sessions.filter((session) => {
+    let filtered = sessions.filter((session) => {
       if (!session.time_slot) return false
       const slotDate = getDateKey(session.time_slot.start_time)
       if (slotDate !== selectedDay) return false
       if (trackFilter !== 'all' && session.track?.id !== trackFilter) return false
       return true
     })
-  }, [sessions, selectedDay, trackFilter])
+    if (search) {
+      const searchLower = search.toLowerCase()
+      filtered = filtered.filter(
+        (s) =>
+          s.title.toLowerCase().includes(searchLower) ||
+          s.description?.toLowerCase().includes(searchLower) ||
+          s.host_name?.toLowerCase().includes(searchLower)
+      )
+    }
+    return filtered
+  }, [sessions, selectedDay, trackFilter, search])
 
   // Group sessions by time slot for the selected day
   const sessionsBySlot = React.useMemo(() => {
@@ -234,6 +246,17 @@ export default function SchedulePage() {
                     {day.label}
                   </Button>
                 ))}
+              </div>
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search sessions..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
               </div>
 
               {/* Track filter and sort toggle */}
@@ -459,7 +482,9 @@ export default function SchedulePage() {
                 <Card>
                   <CardContent className="py-8 text-center">
                     <p className="text-muted-foreground">
-                      {trackFilter !== 'all'
+                      {search
+                        ? 'No sessions match your search.'
+                        : trackFilter !== 'all'
                         ? 'No sessions match the selected track.'
                         : 'No sessions scheduled for this day yet.'}
                     </p>

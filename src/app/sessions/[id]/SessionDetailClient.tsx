@@ -758,6 +758,17 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                           Capacity: {session.venue.capacity} people
                         </p>
                       )}
+                      {session.venue.address && (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(session.venue.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-sm font-medium rounded-md border hover:bg-accent transition-colors"
+                        >
+                          <MapPin className="h-3.5 w-3.5" />
+                          Get Directions
+                        </a>
+                      )}
                       {session.venue.features && session.venue.features.length > 0 && (
                         <div className="flex gap-1 mt-2 flex-wrap">
                           {session.venue.features.map((feature: string, i: number) => (

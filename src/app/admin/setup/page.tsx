@@ -57,6 +57,7 @@ interface Venue {
   capacity: number | null
   features: string[] | null
   style: string | null
+  address: string | null
   is_primary: boolean
 }
 
@@ -86,6 +87,7 @@ export default function AdminSetupPage() {
   const [venueSlug, setVenueSlug] = React.useState('')
   const [venueCapacity, setVenueCapacity] = React.useState('')
   const [venueFeatures, setVenueFeatures] = React.useState('')
+  const [venueAddress, setVenueAddress] = React.useState('')
   const [venueIsPrimary, setVenueIsPrimary] = React.useState(false)
 
   // Expanded venues for availability editing
@@ -158,6 +160,7 @@ export default function AdminSetupPage() {
       slug,
       capacity: venueCapacity ? parseInt(venueCapacity) : null,
       features: features.length > 0 ? features : null,
+      address: venueAddress || null,
       is_primary: venueIsPrimary,
     }
 
@@ -232,6 +235,7 @@ export default function AdminSetupPage() {
     setVenueSlug(venue.slug || '')
     setVenueCapacity(venue.capacity?.toString() || '')
     setVenueFeatures(venue.features?.join(', ') || '')
+    setVenueAddress(venue.address || '')
     setVenueIsPrimary(venue.is_primary)
     setShowVenueForm(true)
   }
@@ -243,6 +247,7 @@ export default function AdminSetupPage() {
     setVenueSlug('')
     setVenueCapacity('')
     setVenueFeatures('')
+    setVenueAddress('')
     setVenueIsPrimary(false)
   }
 
@@ -429,6 +434,14 @@ export default function AdminSetupPage() {
                       </label>
                     </div>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Address</label>
+                  <Input
+                    placeholder="e.g., 1600 Walnut St, Boulder, CO 80302"
+                    value={venueAddress}
+                    onChange={(e) => setVenueAddress(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Features (comma-separated)</label>
