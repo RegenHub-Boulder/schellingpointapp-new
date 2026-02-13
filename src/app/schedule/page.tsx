@@ -29,6 +29,10 @@ interface Session {
   format: string
   duration: number
   host_name: string | null
+  is_self_hosted?: boolean
+  custom_location?: string | null
+  self_hosted_start_time?: string | null
+  self_hosted_end_time?: string | null
   venue: { name: string } | null
   time_slot: TimeSlot | null
   track: { id: string; name: string; color: string | null } | null
@@ -72,6 +76,7 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = React.useState<string | null>(null)
   const [trackFilter, setTrackFilter] = React.useState<string>('all')
   const [sortBy, setSortBy] = React.useState<'time' | 'venue'>('time')
+  const [showSelfHosted, setShowSelfHosted] = React.useState(true)
   const [search, setSearch] = React.useState('')
 
   React.useEffect(() => {
@@ -79,7 +84,7 @@ export default function SchedulePage() {
       try {
         const [sessionsRes, timeSlotsRes] = await Promise.all([
           fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?status=eq.scheduled&select=id,title,description,format,duration,host_name,venue:venues(name),time_slot:time_slots(id,label,start_time,end_time),track:tracks(id,name,color)`,
+            `${SUPABASE_URL}/rest/v1/sessions?status=eq.scheduled&select=id,title,description,format,duration,host_name,is_self_hosted,custom_location,self_hosted_start_time,self_hosted_end_time,venue:venues(name),time_slot:time_slots(id,label,start_time,end_time),track:tracks(id,name,color)`,
             {
               headers: {
                 'apikey': SUPABASE_KEY,
@@ -143,9 +148,16 @@ export default function SchedulePage() {
   // Filter sessions by selected day, track, and search
   const filteredSessions = React.useMemo(() => {
     let filtered = sessions.filter((session) => {
-      if (!session.time_slot) return false
-      const slotDate = getDateKey(session.time_slot.start_time)
-      if (slotDate !== selectedDay) return false
+      if (session.is_self_hosted) {
+        if (!showSelfHosted) return false
+        if (!session.self_hosted_start_time) return false
+        const slotDate = getDateKey(session.self_hosted_start_time)
+        if (slotDate !== selectedDay) return false
+      } else {
+        if (!session.time_slot) return false
+        const slotDate = getDateKey(session.time_slot.start_time)
+        if (slotDate !== selectedDay) return false
+      }
       if (trackFilter !== 'all' && session.track?.id !== trackFilter) return false
       return true
     })
@@ -159,17 +171,19 @@ export default function SchedulePage() {
       )
     }
     return filtered
-  }, [sessions, selectedDay, trackFilter, search])
+  }, [sessions, selectedDay, trackFilter, showSelfHosted, search])
 
   // Group sessions by time slot for the selected day
   const sessionsBySlot = React.useMemo(() => {
     const grouped: Record<string, Session[]> = {}
     filteredSessions.forEach((session) => {
-      if (session.time_slot) {
+      if (session.is_self_hosted) {
+        const key = 'self-hosted'
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(session)
+      } else if (session.time_slot) {
         const slotId = session.time_slot.id
-        if (!grouped[slotId]) {
-          grouped[slotId] = []
-        }
+        if (!grouped[slotId]) grouped[slotId] = []
         grouped[slotId].push(session)
       }
     })
@@ -181,7 +195,7 @@ export default function SchedulePage() {
     if (sortBy !== 'venue') return null
     const grouped: Record<string, Session[]> = {}
     filteredSessions.forEach((session) => {
-      const venueName = session.venue?.name || 'Unassigned'
+      const venueName = session.is_self_hosted ? 'Self-Hosted' : (session.venue?.name || 'Unassigned')
       if (!grouped[venueName]) {
         grouped[venueName] = []
       }
@@ -288,6 +302,19 @@ export default function SchedulePage() {
                     By Venue
                   </button>
                 </div>
+
+                <button
+                  onClick={() => setShowSelfHosted(!showSelfHosted)}
+                  className={cn(
+                    'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 min-h-[36px] border',
+                    showSelfHosted
+                      ? 'bg-orange-500/10 border-orange-500/50 text-orange-700 dark:text-orange-400'
+                      : 'border-border text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  Self-Hosted
+                </button>
 
                 {/* Track filter */}
                 {tracks.length > 0 && (
@@ -406,6 +433,59 @@ export default function SchedulePage() {
                       </div>
                     )
                   })}
+
+                  {/* Self-hosted sessions */}
+                  {sessionsBySlot['self-hosted'] && sessionsBySlot['self-hosted'].length > 0 && (
+                    <div>
+                      <div className="sticky top-[104px] z-10 bg-background/95 backdrop-blur-sm py-1.5 -mx-4 px-4 sm:mx-0 sm:px-0 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 font-semibold text-sm">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span>Self-Hosted</span>
+                          </div>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {sessionsBySlot['self-hosted'].map((session) => (
+                          <Link key={session.id} href={`/sessions/${session.id}`}>
+                            <Card className="h-full card-hover border-orange-500/30 hover:border-orange-500/50">
+                              <CardContent className="p-3">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
+                                    <Badge variant="secondary" className="text-[10px] bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30 flex-shrink-0">
+                                      Self-Hosted
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    {session.self_hosted_start_time && (
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3 flex-shrink-0" />
+                                        <span>{formatTime(session.self_hosted_start_time)}</span>
+                                      </div>
+                                    )}
+                                    {session.host_name && (
+                                      <div className="flex items-center gap-1 truncate">
+                                        <User className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{session.host_name}</span>
+                                      </div>
+                                    )}
+                                    {session.custom_location && (
+                                      <div className="flex items-center gap-1 truncate">
+                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{session.custom_location}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 // Group by venue

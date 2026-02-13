@@ -41,6 +41,8 @@ interface SessionCardProps {
     time_slot?: { label: string; start_time: string } | null
     is_self_hosted?: boolean
     custom_location?: string | null
+    self_hosted_start_time?: string | null
+    self_hosted_end_time?: string | null
     track?: { id: string; name: string; color: string | null } | null
     cohosts?: { profile: { display_name: string | null } | null }[] | null
   }
@@ -168,22 +170,25 @@ export function SessionCard({
           )}
 
           {/* Scheduled info */}
-          {(session.venue || session.is_self_hosted) && (
+          {(session.venue || session.is_self_hosted || session.self_hosted_start_time) && (
             <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4" />
                 {session.is_self_hosted ? (
                   <span className="flex items-center gap-1">
                     <Badge variant="secondary" className="text-xs">Self-Hosted</Badge>
+                    {session.custom_location && (
+                      <span className="truncate text-xs">{session.custom_location}</span>
+                    )}
                   </span>
                 ) : session.venue ? (
                   <span>{session.venue.name}</span>
                 ) : null}
               </div>
-              {session.time_slot?.start_time && (
+              {(session.time_slot?.start_time || session.self_hosted_start_time) && (
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-4 w-4" />
-                  <span>{formatTime(session.time_slot.start_time)}</span>
+                  <span>{formatTime(session.time_slot?.start_time || session.self_hosted_start_time!)}</span>
                 </div>
               )}
             </div>

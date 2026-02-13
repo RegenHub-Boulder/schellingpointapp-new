@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, CheckCircle, MapPin, Building2 } from 'lucide-react'
+import { Loader2, CheckCircle, MapPin, Building2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -45,6 +45,27 @@ const suggestedTags = [
   'community', 'education', 'tooling', 'research', 'design'
 ]
 
+const EVENT_DAYS = [
+  { value: '2026-02-13', label: 'Friday, Feb 13' },
+  { value: '2026-02-14', label: 'Saturday, Feb 14' },
+  { value: '2026-02-15', label: 'Sunday, Feb 15' },
+]
+
+const TIME_OPTIONS: { value: string; label: string }[] = []
+for (let h = 9; h <= 22; h++) {
+  for (const m of [0, 30]) {
+    if (h === 22 && m === 30) continue
+    const hh = String(h).padStart(2, '0')
+    const mm = String(m).padStart(2, '0')
+    const label = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${mm} ${h >= 12 ? 'PM' : 'AM'}`
+    TIME_OPTIONS.push({ value: `${hh}:${mm}`, label })
+  }
+}
+
+function buildTimestamp(day: string, time: string): string {
+  return `${day}T${time}:00-07:00`
+}
+
 function getAccessToken(): string | null {
   const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
   const stored = localStorage.getItem(storageKey)
@@ -74,6 +95,9 @@ export default function ProposePage() {
   const [timePreferences, setTimePreferences] = React.useState<string[]>([])
   const [isSelfHosted, setIsSelfHosted] = React.useState(false)
   const [customLocation, setCustomLocation] = React.useState('')
+  const [selfHostedDay, setSelfHostedDay] = React.useState('')
+  const [selfHostedStartTime, setSelfHostedStartTime] = React.useState('')
+  const [selfHostedEndTime, setSelfHostedEndTime] = React.useState('')
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isSuccess, setIsSuccess] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -109,6 +133,10 @@ export default function ProposePage() {
       setError('Please provide location details for self-hosted sessions')
       return
     }
+    if (isSelfHosted && selfHostedDay && (!selfHostedStartTime || !selfHostedEndTime)) {
+      setError('Please provide both start and end times for your self-hosted session')
+      return
+    }
 
     const token = getAccessToken()
     if (!token) {
@@ -140,6 +168,10 @@ export default function ProposePage() {
           status: 'pending',
           is_self_hosted: isSelfHosted,
           custom_location: isSelfHosted ? customLocation.trim() || null : null,
+          self_hosted_start_time: isSelfHosted && selfHostedDay && selfHostedStartTime
+            ? buildTimestamp(selfHostedDay, selfHostedStartTime) : null,
+          self_hosted_end_time: isSelfHosted && selfHostedDay && selfHostedEndTime
+            ? buildTimestamp(selfHostedDay, selfHostedEndTime) : null,
           track_id: trackId,
         }),
       })
@@ -203,6 +235,9 @@ export default function ProposePage() {
                     setTimePreferences([])
                     setIsSelfHosted(false)
                     setCustomLocation('')
+                    setSelfHostedDay('')
+                    setSelfHostedStartTime('')
+                    setSelfHostedEndTime('')
                     setTrackId(null)
                   }}
                 >
@@ -423,8 +458,66 @@ export default function ProposePage() {
                   </button>
                 </div>
 
-                {/* Custom Location Field - shown when self-hosted */}
+                {/* Self-hosted details - shown when self-hosted */}
                 {isSelfHosted && (
+                  <>
+                  {/* Day Picker */}
+                  <div className="space-y-2 pt-2">
+                    <label className="text-sm font-medium">
+                      Which day? <span className="text-xs text-muted-foreground">(optional)</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {EVENT_DAYS.map((day) => (
+                        <button
+                          key={day.value}
+                          type="button"
+                          onClick={() => setSelfHostedDay(selfHostedDay === day.value ? '' : day.value)}
+                          className={cn(
+                            'px-3 py-2 rounded-lg border text-sm transition-colors',
+                            selfHostedDay === day.value
+                              ? 'border-primary bg-primary/10 font-medium'
+                              : 'hover:border-muted-foreground/50'
+                          )}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time Range */}
+                  {selfHostedDay && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Time Range
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selfHostedStartTime}
+                          onChange={(e) => setSelfHostedStartTime(e.target.value)}
+                          className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Start time</option>
+                          {TIME_OPTIONS.map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                        <span className="text-muted-foreground">to</span>
+                        <select
+                          value={selfHostedEndTime}
+                          onChange={(e) => setSelfHostedEndTime(e.target.value)}
+                          className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">End time</option>
+                          {TIME_OPTIONS.map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2 pt-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
@@ -441,6 +534,7 @@ export default function ProposePage() {
                       {customLocation.length}/300 - Provide enough detail for attendees to find you
                     </p>
                   </div>
+                  </>
                 )}
               </div>
 

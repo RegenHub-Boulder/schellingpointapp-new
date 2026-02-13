@@ -746,10 +746,34 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                         <h3 className="font-semibold">Self-Hosted Location</h3>
                       </div>
                       <Badge variant="secondary" className="mb-2">Self-Hosted</Badge>
+                      {session.self_hosted_start_time && (
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {new Date(session.self_hosted_start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {' '}
+                            {new Date(session.self_hosted_start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                            {session.self_hosted_end_time && (
+                              <> – {new Date(session.self_hosted_end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</>
+                            )}
+                          </span>
+                        </div>
+                      )}
                       {session.custom_location ? (
-                        <p className="text-muted-foreground whitespace-pre-wrap">
-                          {session.custom_location}
-                        </p>
+                        <>
+                          <p className="text-muted-foreground whitespace-pre-wrap">
+                            {session.custom_location}
+                          </p>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(session.custom_location)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 text-sm font-medium rounded-md border hover:bg-accent transition-colors"
+                          >
+                            <MapPin className="h-3.5 w-3.5" />
+                            Get Directions
+                          </a>
+                        </>
                       ) : (
                         <p className="text-sm text-muted-foreground italic">
                           Location details will be provided by the host
@@ -1081,6 +1105,10 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                   format: session.format,
                   topic_tags: session.topic_tags,
                   track_id: session.track_id,
+                  is_self_hosted: session.is_self_hosted,
+                  custom_location: session.custom_location,
+                  self_hosted_start_time: session.self_hosted_start_time,
+                  self_hosted_end_time: session.self_hosted_end_time,
                 }}
                 hostId={session.host_id}
                 hostName={session.host_name}

@@ -58,6 +58,8 @@ CREATE INDEX IF NOT EXISTS idx_time_slots_venue_day ON time_slots(venue_id, day_
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS track_id UUID REFERENCES tracks(id) ON DELETE SET NULL;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type TEXT DEFAULT 'proposed';
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS is_votable BOOLEAN DEFAULT TRUE;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS self_hosted_start_time TIMESTAMPTZ;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS self_hosted_end_time TIMESTAMPTZ;
 
 -- session_type values: 'curated', 'proposed', 'workshop', 'track_reserved'
 ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_session_type_check;

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { X, Loader2, Search } from 'lucide-react'
+import { X, Loader2, Search, MapPin, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,6 +24,38 @@ const suggestedTags = [
   'governance', 'defi', 'nfts', 'infrastructure', 'security',
   'community', 'education', 'tooling', 'research', 'design'
 ]
+
+const EVENT_DAYS = [
+  { value: '2026-02-13', label: 'Friday, Feb 13' },
+  { value: '2026-02-14', label: 'Saturday, Feb 14' },
+  { value: '2026-02-15', label: 'Sunday, Feb 15' },
+]
+
+const TIME_OPTIONS: { value: string; label: string }[] = []
+for (let h = 9; h <= 22; h++) {
+  for (const m of [0, 30]) {
+    if (h === 22 && m === 30) continue
+    const hh = String(h).padStart(2, '0')
+    const mm = String(m).padStart(2, '0')
+    const label = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${mm} ${h >= 12 ? 'PM' : 'AM'}`
+    TIME_OPTIONS.push({ value: `${hh}:${mm}`, label })
+  }
+}
+
+function buildTimestamp(day: string, time: string): string {
+  return `${day}T${time}:00-07:00`
+}
+
+function parseTimestamp(iso: string | null | undefined): { day: string; time: string } {
+  if (!iso) return { day: '', time: '' }
+  const d = new Date(iso)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const dayNum = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return { day: `${year}-${month}-${dayNum}`, time: `${hh}:${mm}` }
+}
 
 function getAccessToken(): string | null {
   const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
@@ -173,6 +205,10 @@ interface EditSessionModalProps {
     format: string
     topic_tags: string[] | null
     track_id?: string | null
+    is_self_hosted?: boolean
+    custom_location?: string | null
+    self_hosted_start_time?: string | null
+    self_hosted_end_time?: string | null
   }
   onSave: () => void
   isAdmin?: boolean
@@ -196,6 +232,13 @@ export function EditSessionModal({
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  // Self-hosted state
+  const [isSelfHosted, setIsSelfHosted] = React.useState(session.is_self_hosted || false)
+  const [customLocation, setCustomLocation] = React.useState(session.custom_location || '')
+  const [selfHostedDay, setSelfHostedDay] = React.useState(() => parseTimestamp(session.self_hosted_start_time).day)
+  const [selfHostedStartTime, setSelfHostedStartTime] = React.useState(() => parseTimestamp(session.self_hosted_start_time).time)
+  const [selfHostedEndTime, setSelfHostedEndTime] = React.useState(() => parseTimestamp(session.self_hosted_end_time).time)
+
   // Admin host editing state
   const [selectedHost, setSelectedHost] = React.useState<ProfileResult | null>(host || null)
   const [hostNameText, setHostNameText] = React.useState(hostName || '')
@@ -208,6 +251,11 @@ export function EditSessionModal({
     setFormat(session.format)
     setTags(session.topic_tags || [])
     setTrackId(session.track_id || null)
+    setIsSelfHosted(session.is_self_hosted || false)
+    setCustomLocation(session.custom_location || '')
+    setSelfHostedDay(parseTimestamp(session.self_hosted_start_time).day)
+    setSelfHostedStartTime(parseTimestamp(session.self_hosted_start_time).time)
+    setSelfHostedEndTime(parseTimestamp(session.self_hosted_end_time).time)
     setSelectedHost(host || null)
     setHostNameText(hostName || '')
     setEditCohosts(cohosts || [])
@@ -271,6 +319,17 @@ export function EditSessionModal({
         format,
         topic_tags: tags.length > 0 ? tags : null,
         track_id: trackId,
+        is_self_hosted: isSelfHosted,
+        custom_location: isSelfHosted ? customLocation.trim() || null : null,
+        self_hosted_start_time: isSelfHosted && selfHostedDay && selfHostedStartTime
+          ? buildTimestamp(selfHostedDay, selfHostedStartTime) : null,
+        self_hosted_end_time: isSelfHosted && selfHostedDay && selfHostedEndTime
+          ? buildTimestamp(selfHostedDay, selfHostedEndTime) : null,
+      }
+
+      if (isSelfHosted) {
+        patchBody.venue_id = null
+        patchBody.time_slot_id = null
       }
 
       if (isAdmin) {
@@ -543,6 +602,107 @@ export function EditSessionModal({
             </div>
           </div>
 
+          {/* Self-Hosted Toggle */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Hosting</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSelfHosted(false)}
+                className={cn(
+                  'p-3 rounded-lg border text-left transition-colors',
+                  !isSelfHosted
+                    ? 'border-primary bg-primary/10'
+                    : 'hover:border-muted-foreground/50'
+                )}
+              >
+                <div className="font-medium text-sm">Official Venue</div>
+                <div className="text-xs text-muted-foreground">Assigned by admin</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSelfHosted(true)}
+                className={cn(
+                  'p-3 rounded-lg border text-left transition-colors',
+                  isSelfHosted
+                    ? 'border-primary bg-primary/10'
+                    : 'hover:border-muted-foreground/50'
+                )}
+              >
+                <div className="font-medium text-sm">Self-Hosted</div>
+                <div className="text-xs text-muted-foreground">Your own location</div>
+              </button>
+            </div>
+
+            {isSelfHosted && (
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                {/* Day Picker */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Day</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {EVENT_DAYS.map((day) => (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => setSelfHostedDay(selfHostedDay === day.value ? '' : day.value)}
+                        className={cn(
+                          'px-2.5 py-1.5 rounded-md border text-xs transition-colors',
+                          selfHostedDay === day.value
+                            ? 'border-primary bg-primary/10 font-medium'
+                            : 'hover:border-muted-foreground/50'
+                        )}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Time Range */}
+                {selfHostedDay && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Time Range</label>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={selfHostedStartTime}
+                        onChange={(e) => setSelfHostedStartTime(e.target.value)}
+                        className="flex-1 rounded-md border bg-background px-2 py-1.5 text-sm"
+                      >
+                        <option value="">Start</option>
+                        {TIME_OPTIONS.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                      <span className="text-xs text-muted-foreground">to</span>
+                      <select
+                        value={selfHostedEndTime}
+                        onChange={(e) => setSelfHostedEndTime(e.target.value)}
+                        className="flex-1 rounded-md border bg-background px-2 py-1.5 text-sm"
+                      >
+                        <option value="">End</option>
+                        {TIME_OPTIONS.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Location */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Location / Address</label>
+                  <Textarea
+                    value={customLocation}
+                    onChange={(e) => setCustomLocation(e.target.value)}
+                    placeholder="Address or directions for attendees..."
+                    rows={2}
+                    maxLength={300}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Tags */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Tags (up to 5)</label>
@@ -598,7 +758,7 @@ export function EditSessionModal({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Note: Time slot and venue can only be changed by an admin.
+            Note: Time slot and venue assignment can only be changed by an admin. You can switch to self-hosted at any time.
           </p>
         </div>
 
