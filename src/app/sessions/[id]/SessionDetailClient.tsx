@@ -687,12 +687,12 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                                   </div>
                                 )}
                                 {activeHost.telegram && (
-                                  <a href={`https://t.me/${activeHost.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                                  <a href={`https://t.me/${activeHost.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
                                     <ExternalLink className="h-3.5 w-3.5" />@{activeHost.telegram.replace('@', '')}
                                   </a>
                                 )}
                                 {activeHost.ens && (
-                                  <a href={`https://app.ens.domains/${activeHost.ens}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+                                  <a href={`https://app.ens.domains/${activeHost.ens}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
                                     <Hexagon className="h-3.5 w-3.5" />{activeHost.ens}
                                   </a>
                                 )}

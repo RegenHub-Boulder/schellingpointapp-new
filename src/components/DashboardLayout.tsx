@@ -200,7 +200,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center gap-4">
               <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
                 <img src="/logo.svg" alt="Schelling Point" className="h-8 w-8 rounded" />
-                <span className="hidden sm:inline">Schelling Point</span>
+                <div className="hidden sm:flex flex-col">
+                  <span className="font-bold text-lg leading-tight">Schelling Point</span>
+                  <span className="text-xs text-muted-foreground leading-tight font-normal">EthBoulder™</span>
+                </div>
               </Link>
               {profile?.is_admin && (
                 <Badge variant="secondary" className="text-xs bg-[#B2FF00]/20 text-[#B2FF00] border-[#B2FF00]/30">
@@ -211,6 +214,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* User Actions */}
             <div className="flex items-center gap-3">
+              {!user && (
+                <Button size="sm" asChild>
+                  <Link href="/login">Sign In</Link>
+                </Button>
+              )}
               {user && (
                 <>
                   {profile?.is_admin && (
