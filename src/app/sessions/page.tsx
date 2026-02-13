@@ -58,6 +58,9 @@ export default function SessionsPage() {
   const [sort, setSort] = React.useState('votes')
   const [showFilters, setShowFilters] = React.useState(false)
 
+  // Stable sort positions — captures server order on load, prevents jumps during voting
+  const stableVoteOrderRef = React.useRef<Record<string, number>>({})
+
   // Calculate credits spent
   const creditsSpent = React.useMemo(() => {
     return Object.values(userVotes).reduce((sum, votes) => sum + votesToCredits(votes), 0)
@@ -83,6 +86,9 @@ export default function SessionsPage() {
 
         if (response.ok && mounted) {
           const data = await response.json()
+          const order: Record<string, number> = {}
+          data.forEach((s: any, i: number) => { order[s.id] = i })
+          stableVoteOrderRef.current = order
           setSessions(data)
         }
       } catch (err) {
@@ -172,6 +178,9 @@ export default function SessionsPage() {
 
       if (response.ok) {
         const data = await response.json()
+        const order: Record<string, number> = {}
+        data.forEach((s: any, i: number) => { order[s.id] = i })
+        stableVoteOrderRef.current = order
         setSessions(data)
       }
     } catch (err) {
@@ -377,7 +386,11 @@ export default function SessionsPage() {
 
     // Sort
     if (sort === 'votes') {
-      filtered = [...filtered].sort((a, b) => b.total_votes - a.total_votes)
+      // Use stable positions from last server fetch — prevents jumping during voting
+      const order = stableVoteOrderRef.current
+      filtered = [...filtered].sort((a, b) =>
+        (order[a.id] ?? Infinity) - (order[b.id] ?? Infinity)
+      )
     } else if (sort === 'recent') {
       filtered = [...filtered].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
