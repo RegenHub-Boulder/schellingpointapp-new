@@ -217,7 +217,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               {!user && (
                 <Link
                   href="/login"
-                  className="flex items-center justify-center gap-1.5 px-2 md:px-3 py-2.5 min-h-[44px] min-w-[44px] text-xs md:text-sm font-medium rounded-md whitespace-nowrap bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
+                  className="flex items-center justify-center px-2 md:px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
                 >
                   Sign In
                 </Link>
