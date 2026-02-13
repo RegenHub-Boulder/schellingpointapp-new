@@ -590,6 +590,16 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                       </span>
                     </>
                   )}
+                  {session.time_preferences && session.time_preferences.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                      {session.time_preferences.map((pref: string) => (
+                        <Badge key={pref} variant="outline" className="text-xs">
+                          {pref.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                        </Badge>
+                      ))}
+                    </>
+                  )}
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-bold mb-4 break-words pr-28">{session.title}</h1>

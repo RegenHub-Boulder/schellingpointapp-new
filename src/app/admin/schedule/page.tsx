@@ -80,6 +80,7 @@ interface Session {
   track_id: string | null
   session_type: string | null
   is_votable: boolean
+  time_preferences: string[] | null
   track?: Track | null
 }
 
@@ -89,6 +90,21 @@ const EVENT_DAYS = [
   { date: '2026-02-14', label: 'Day 2 - Sat Feb 14' },
   { date: '2026-02-15', label: 'Day 3 - Sun Feb 15' },
 ]
+
+// Map each day to the time preference values that apply
+const DAY_TO_PREFERENCES: Record<string, string[]> = {
+  '2026-02-13': ['friday_pm'],
+  '2026-02-14': ['saturday_am', 'saturday_pm'],
+  '2026-02-15': ['sunday_am', 'sunday_pm'],
+}
+
+const PREF_LABELS: Record<string, string> = {
+  friday_pm: 'Fri PM',
+  saturday_am: 'Sat AM',
+  saturday_pm: 'Sat PM',
+  sunday_am: 'Sun AM',
+  sunday_pm: 'Sun PM',
+}
 
 export default function AdminSchedulePage() {
   const router = useRouter()
@@ -325,6 +341,7 @@ export default function AdminSchedulePage() {
                 <SessionTrayItem
                   key={session.id}
                   session={session}
+                  selectedDay={selectedDay}
                   onDragStart={() => setDraggedSession(session)}
                   onDragEnd={() => setDraggedSession(null)}
                 />
@@ -488,19 +505,28 @@ export default function AdminSchedulePage() {
 // Session item in the tray
 function SessionTrayItem({
   session,
+  selectedDay,
   onDragStart,
   onDragEnd,
 }: {
   session: Session
+  selectedDay: string
   onDragStart: () => void
   onDragEnd: () => void
 }) {
+  const prefs = session.time_preferences || []
+  const dayPrefs = DAY_TO_PREFERENCES[selectedDay] || []
+  const matchesDay = prefs.length > 0 && prefs.some((p) => dayPrefs.includes(p))
+
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className="p-3 bg-background rounded-lg border shadow-sm cursor-move hover:shadow-md transition-shadow group"
+      className={cn(
+        'p-3 bg-background rounded-lg border shadow-sm cursor-move hover:shadow-md transition-shadow group',
+        matchesDay && 'ring-2 ring-green-500/50 border-green-500/30'
+      )}
     >
       <div className="flex items-start gap-2">
         <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0 opacity-50 group-hover:opacity-100" />
@@ -518,15 +544,31 @@ function SessionTrayItem({
           {session.host_name && (
             <p className="text-xs text-muted-foreground mt-1">{session.host_name}</p>
           )}
-          {session.track && (
-            <Badge
-              variant="secondary"
-              className="text-xs mt-2"
-              style={{ backgroundColor: session.track.color || undefined }}
-            >
-              {session.track.name}
-            </Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-1 mt-2">
+            {session.track && (
+              <Badge
+                variant="secondary"
+                className="text-xs"
+                style={{ backgroundColor: session.track.color || undefined }}
+              >
+                {session.track.name}
+              </Badge>
+            )}
+            {prefs.map((pref) => (
+              <Badge
+                key={pref}
+                variant="outline"
+                className={cn(
+                  'text-[10px]',
+                  dayPrefs.includes(pref)
+                    ? 'border-green-500 text-green-700 dark:text-green-400 bg-green-500/10'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {PREF_LABELS[pref] || pref}
+              </Badge>
+            ))}
+          </div>
         </div>
       </div>
     </div>

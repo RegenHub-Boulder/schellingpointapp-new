@@ -32,6 +32,14 @@ const durations = [
   { value: 90, label: '90 min' },
 ]
 
+const TIME_PREFERENCES = [
+  { value: 'friday_pm', label: 'Friday PM' },
+  { value: 'saturday_am', label: 'Saturday AM' },
+  { value: 'saturday_pm', label: 'Saturday PM' },
+  { value: 'sunday_am', label: 'Sunday AM' },
+  { value: 'sunday_pm', label: 'Sunday PM' },
+]
+
 const suggestedTags = [
   'governance', 'defi', 'nfts', 'infrastructure', 'security',
   'community', 'education', 'tooling', 'research', 'design'
@@ -63,6 +71,7 @@ export default function ProposePage() {
   const [duration, setDuration] = React.useState(60)
   const [tags, setTags] = React.useState<string[]>([])
   const [customTag, setCustomTag] = React.useState('')
+  const [timePreferences, setTimePreferences] = React.useState<string[]>([])
   const [isSelfHosted, setIsSelfHosted] = React.useState(false)
   const [customLocation, setCustomLocation] = React.useState('')
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -127,6 +136,7 @@ export default function ProposePage() {
           host_id: user.id,
           host_name: profile.display_name || profile.email,
           topic_tags: tags.length > 0 ? tags : null,
+          time_preferences: timePreferences.length > 0 ? timePreferences : null,
           status: 'pending',
           is_self_hosted: isSelfHosted,
           custom_location: isSelfHosted ? customLocation.trim() || null : null,
@@ -190,6 +200,7 @@ export default function ProposePage() {
                     setFormat('talk')
                     setDuration(60)
                     setTags([])
+                    setTimePreferences([])
                     setIsSelfHosted(false)
                     setCustomLocation('')
                     setTrackId(null)
@@ -291,6 +302,37 @@ export default function ProposePage() {
                       )}
                     >
                       {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time Preferences */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Time Preference</label>
+                <p className="text-xs text-muted-foreground">
+                  When would you prefer to present? Select all that work.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TIME_PREFERENCES.map((tp) => (
+                    <button
+                      key={tp.value}
+                      type="button"
+                      onClick={() =>
+                        setTimePreferences((prev) =>
+                          prev.includes(tp.value)
+                            ? prev.filter((v) => v !== tp.value)
+                            : [...prev, tp.value]
+                        )
+                      }
+                      className={cn(
+                        'px-4 py-2 rounded-lg border transition-colors',
+                        timePreferences.includes(tp.value)
+                          ? 'border-primary bg-primary/10'
+                          : 'hover:border-muted-foreground/50'
+                      )}
+                    >
+                      {tp.label}
                     </button>
                   ))}
                 </div>

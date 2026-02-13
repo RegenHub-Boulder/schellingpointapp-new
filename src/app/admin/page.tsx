@@ -51,6 +51,7 @@ interface Session {
   topic_tags: string[] | null
   total_votes: number
   status: SessionStatus
+  time_preferences: string[] | null
   venue_id: string | null
   time_slot_id: string | null
   venue?: { id: string; name: string } | null
@@ -517,6 +518,16 @@ function SessionAdminCard({
                 ))}
               </div>
             )}
+            {session.time_preferences && session.time_preferences.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-xs text-muted-foreground">Prefers:</span>
+                {session.time_preferences.map((pref) => (
+                  <Badge key={pref} variant="outline" className="text-xs border-blue-500/50 text-blue-700 dark:text-blue-400 bg-blue-500/10">
+                    {pref.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-2 pt-2 border-t flex-wrap">
             <Button size="sm" variant="outline" onClick={onReject} className="flex-1 sm:flex-none">
@@ -627,6 +638,16 @@ function SessionScheduleCard({
               <h3 className="font-semibold">{session.title}</h3>
               {session.host_name && (
                 <p className="text-sm text-muted-foreground">by {session.host_name}</p>
+              )}
+              {session.time_preferences && session.time_preferences.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Prefers:</span>
+                  {session.time_preferences.map((pref) => (
+                    <Badge key={pref} variant="outline" className="text-xs border-blue-500/50 text-blue-700 dark:text-blue-400 bg-blue-500/10">
+                      {pref.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </Badge>
+                  ))}
+                </div>
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
