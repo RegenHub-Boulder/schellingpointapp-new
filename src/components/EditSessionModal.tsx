@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -39,6 +39,130 @@ function getAccessToken(): string | null {
   return null
 }
 
+// --- Profile types and search component ---
+
+interface ProfileResult {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+}
+
+function ProfileSearch({
+  onSelect,
+  excludeIds,
+  placeholder = 'Search profiles...',
+}: {
+  onSelect: (profile: ProfileResult) => void
+  excludeIds: string[]
+  placeholder?: string
+}) {
+  const [query, setQuery] = React.useState('')
+  const [results, setResults] = React.useState<ProfileResult[]>([])
+  const [isSearching, setIsSearching] = React.useState(false)
+  const [showDropdown, setShowDropdown] = React.useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout>>()
+
+  React.useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (query.trim().length < 2) {
+      setResults([])
+      setShowDropdown(false)
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const token = getAccessToken()
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/profiles?display_name=ilike.*${encodeURIComponent(query.trim())}*&select=id,display_name,avatar_url&limit=8`,
+          {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${token || SUPABASE_KEY}`,
+            },
+          }
+        )
+        if (res.ok) {
+          const data: ProfileResult[] = await res.json()
+          setResults(data.filter((p) => !excludeIds.includes(p.id)))
+          setShowDropdown(true)
+        }
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [query, excludeIds])
+
+  // Close dropdown on outside click
+  React.useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={placeholder}
+          className="pl-8"
+          onFocus={() => { if (results.length > 0) setShowDropdown(true) }}
+        />
+        {isSearching && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+      </div>
+      {showDropdown && results.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {results.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
+              onClick={() => {
+                onSelect(profile)
+                setQuery('')
+                setResults([])
+                setShowDropdown(false)
+              }}
+            >
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                  {(profile.display_name || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <span className="truncate">{profile.display_name || 'Unnamed'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {showDropdown && results.length === 0 && query.trim().length >= 2 && !isSearching && (
+        <div className="absolute z-10 mt-1 w-full bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm text-muted-foreground">
+          No profiles found
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Cohost type matching the shape from SessionDetailClient ---
+
+interface CohostEntry {
+  user_id: string
+  profile: ProfileResult | null
+}
+
+// --- Main modal ---
+
 interface EditSessionModalProps {
   isOpen: boolean
   onClose: () => void
@@ -51,9 +175,17 @@ interface EditSessionModalProps {
     track_id?: string | null
   }
   onSave: () => void
+  isAdmin?: boolean
+  hostId?: string | null
+  hostName?: string | null
+  host?: ProfileResult | null
+  cohosts?: CohostEntry[]
 }
 
-export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessionModalProps) {
+export function EditSessionModal({
+  isOpen, onClose, session, onSave,
+  isAdmin, hostId, hostName, host, cohosts,
+}: EditSessionModalProps) {
   const { tracks } = useTracks()
   const [title, setTitle] = React.useState(session.title)
   const [description, setDescription] = React.useState(session.description || '')
@@ -64,6 +196,11 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
   const [isSaving, setIsSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  // Admin host editing state
+  const [selectedHost, setSelectedHost] = React.useState<ProfileResult | null>(host || null)
+  const [hostNameText, setHostNameText] = React.useState(hostName || '')
+  const [editCohosts, setEditCohosts] = React.useState<CohostEntry[]>(cohosts || [])
+
   // Reset form when session changes
   React.useEffect(() => {
     setTitle(session.title)
@@ -71,7 +208,10 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
     setFormat(session.format)
     setTags(session.topic_tags || [])
     setTrackId(session.track_id || null)
-  }, [session])
+    setSelectedHost(host || null)
+    setHostNameText(hostName || '')
+    setEditCohosts(cohosts || [])
+  }, [session, host, hostName, cohosts])
 
   const handleAddTag = (tag: string) => {
     const normalizedTag = tag.toLowerCase().trim()
@@ -83,6 +223,29 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
 
   const handleRemoveTag = (tag: string) => {
     setTags(tags.filter((t) => t !== tag))
+  }
+
+  // Compute IDs to exclude from profile search
+  const excludeFromSearch = React.useMemo(() => {
+    const ids: string[] = []
+    if (selectedHost?.id) ids.push(selectedHost.id)
+    editCohosts.forEach((c) => { if (c.user_id) ids.push(c.user_id) })
+    return ids
+  }, [selectedHost, editCohosts])
+
+  const handleSelectPrimaryHost = (profile: ProfileResult) => {
+    // If the new primary host is currently a co-host, remove them from co-hosts
+    setEditCohosts((prev) => prev.filter((c) => c.user_id !== profile.id))
+    setSelectedHost(profile)
+    setHostNameText(profile.display_name || '')
+  }
+
+  const handleAddCohost = (profile: ProfileResult) => {
+    setEditCohosts((prev) => [...prev, { user_id: profile.id, profile }])
+  }
+
+  const handleRemoveCohost = (userId: string) => {
+    setEditCohosts((prev) => prev.filter((c) => c.user_id !== userId))
   }
 
   const handleSave = async () => {
@@ -101,6 +264,20 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
     setError(null)
 
     try {
+      // Build session PATCH body
+      const patchBody: Record<string, any> = {
+        title: title.trim(),
+        description: description.trim() || null,
+        format,
+        topic_tags: tags.length > 0 ? tags : null,
+        track_id: trackId,
+      }
+
+      if (isAdmin) {
+        patchBody.host_id = selectedHost?.id || null
+        patchBody.host_name = hostNameText.trim() || null
+      }
+
       const response = await fetch(
         `${SUPABASE_URL}/rest/v1/sessions?id=eq.${session.id}`,
         {
@@ -111,19 +288,50 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal',
           },
-          body: JSON.stringify({
-            title: title.trim(),
-            description: description.trim() || null,
-            format,
-            topic_tags: tags.length > 0 ? tags : null,
-            track_id: trackId,
-          }),
+          body: JSON.stringify(patchBody),
         }
       )
 
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.message || 'Failed to update session')
+      }
+
+      // Sync co-hosts if admin
+      if (isAdmin) {
+        const originalIds = new Set((cohosts || []).map((c) => c.user_id))
+        const editedIds = new Set(editCohosts.map((c) => c.user_id))
+
+        // Removed co-hosts
+        const removed = Array.from(originalIds).filter((id) => !editedIds.has(id))
+        // Added co-hosts
+        const added = Array.from(editedIds).filter((id) => !originalIds.has(id))
+
+        const headers = {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        }
+
+        await Promise.all([
+          ...removed.map((userId) =>
+            fetch(
+              `${SUPABASE_URL}/rest/v1/session_cohosts?session_id=eq.${session.id}&user_id=eq.${userId}`,
+              { method: 'DELETE', headers }
+            )
+          ),
+          ...added.map((userId) =>
+            fetch(
+              `${SUPABASE_URL}/rest/v1/session_cohosts`,
+              {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ session_id: session.id, user_id: userId }),
+              }
+            )
+          ),
+        ])
       }
 
       onSave()
@@ -179,6 +387,85 @@ export function EditSessionModal({ isOpen, onClose, session, onSave }: EditSessi
             />
             <p className="text-xs text-muted-foreground">{title.length}/100</p>
           </div>
+
+          {/* Admin-only: Hosts section */}
+          {isAdmin && (
+            <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <label className="text-sm font-medium">Hosts <span className="text-xs text-muted-foreground">(Admin)</span></label>
+
+              {/* Primary Host */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Primary Host</label>
+                {selectedHost ? (
+                  <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+                    {selectedHost.avatar_url ? (
+                      <img src={selectedHost.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                        {(selectedHost.display_name || '?')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm flex-1 truncate">{selectedHost.display_name || 'Unnamed'}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedHost(null); }}
+                      className="p-1 rounded hover:bg-muted"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <ProfileSearch
+                    onSelect={handleSelectPrimaryHost}
+                    excludeIds={excludeFromSearch}
+                    placeholder="Search for primary host..."
+                  />
+                )}
+                <Input
+                  value={hostNameText}
+                  onChange={(e) => setHostNameText(e.target.value)}
+                  placeholder="Host display name (override)"
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Auto-filled from profile. Edit to override the displayed name.
+                </p>
+              </div>
+
+              {/* Co-Hosts */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Co-Hosts</label>
+                {editCohosts.length > 0 && (
+                  <div className="space-y-1.5">
+                    {editCohosts.map((c) => (
+                      <div key={c.user_id} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+                        {c.profile?.avatar_url ? (
+                          <img src={c.profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                            {(c.profile?.display_name || '?')[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-sm flex-1 truncate">{c.profile?.display_name || 'Unnamed'}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCohost(c.user_id)}
+                          className="p-1 rounded hover:bg-muted"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <ProfileSearch
+                  onSelect={handleAddCohost}
+                  excludeIds={excludeFromSearch}
+                  placeholder="Add co-host..."
+                />
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           <div className="space-y-2">

@@ -1052,6 +1052,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
               <EditSessionModal
                 isOpen={showEditModal}
                 onClose={() => setShowEditModal(false)}
+                isAdmin={!!profile?.is_admin}
                 session={{
                   id: session.id,
                   title: session.title,
@@ -1060,6 +1061,10 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                   topic_tags: session.topic_tags,
                   track_id: session.track_id,
                 }}
+                hostId={session.host_id}
+                hostName={session.host_name}
+                host={session.host}
+                cohosts={session.cohosts}
                 onSave={async () => {
                   // Refresh session data
                   const response = await fetch(
