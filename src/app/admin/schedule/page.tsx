@@ -389,9 +389,22 @@ export default function AdminSchedulePage() {
 
           {/* Grid */}
           <div className="flex-1 overflow-auto p-4">
-            <div className="min-w-[800px]">
-              {/* Header Row - Venues */}
-              <div className="grid gap-2" style={{ gridTemplateColumns: `80px repeat(${venues.length}, 1fr)` }}>
+            {timeRows.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No time slots configured for this day.
+                  <br />
+                  <Link href="/admin/setup" className="text-primary hover:underline">
+                    Configure time slots in Event Setup
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : (
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `80px repeat(${venues.length}, minmax(130px, 1fr))` }}
+              >
+                {/* Header Row - Venues */}
                 <div className="h-12" /> {/* Time column header */}
                 {venues.map((venue) => (
                   <div
@@ -409,18 +422,12 @@ export default function AdminSchedulePage() {
                     </div>
                   </div>
                 ))}
-              </div>
 
-              {/* Time Rows */}
-              <div className="mt-2 space-y-2">
-                {timeRows.map((timeRow, rowIdx) => (
-                  <div
-                    key={`${timeRow.start}-${timeRow.end}`}
-                    className="grid gap-2"
-                    style={{ gridTemplateColumns: `80px repeat(${venues.length}, 1fr)` }}
-                  >
+                {/* Time Rows */}
+                {timeRows.map((timeRow) => (
+                  <React.Fragment key={`${timeRow.start}-${timeRow.end}`}>
                     {/* Time Label */}
-                    <div className="flex flex-col justify-center text-xs text-muted-foreground pr-2 text-right">
+                    <div className="flex flex-col justify-center text-xs text-muted-foreground pr-2 text-right h-20">
                       <div className="font-medium">{formatTime(timeRow.start)}</div>
                       <div>{formatTime(timeRow.end)}</div>
                     </div>
@@ -436,11 +443,10 @@ export default function AdminSchedulePage() {
                       const scheduledSession = slot ? getSessionForSlot(slot.id) : null
 
                       if (!slot) {
-                        // No slot for this venue at this time
                         return (
                           <div
                             key={venue.id}
-                            className="min-h-[80px] rounded-lg bg-muted/20 border border-dashed border-muted-foreground/20"
+                            className="h-20 rounded-lg bg-muted/20 border border-dashed border-muted-foreground/20"
                           />
                         )
                       }
@@ -449,9 +455,9 @@ export default function AdminSchedulePage() {
                         return (
                           <div
                             key={venue.id}
-                            className="min-h-[80px] rounded-lg bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center"
+                            className="h-20 rounded-lg bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center overflow-hidden"
                           >
-                            <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                            <span className="text-xs text-amber-700 dark:text-amber-400 font-medium truncate px-2">
                               {slot.label || 'Break'}
                             </span>
                           </div>
@@ -479,22 +485,10 @@ export default function AdminSchedulePage() {
                         />
                       )
                     })}
-                  </div>
+                  </React.Fragment>
                 ))}
-
-                {timeRows.length === 0 && (
-                  <Card>
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                      No time slots configured for this day.
-                      <br />
-                      <Link href="/admin/setup" className="text-primary hover:underline">
-                        Configure time slots in Event Setup
-                      </Link>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -602,7 +596,7 @@ function DropZone({
         onDrop()
       }}
       className={cn(
-        'min-h-[80px] rounded-lg border-2 border-dashed transition-colors flex items-center justify-center',
+        'h-20 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center overflow-hidden',
         isDragging && 'border-primary/50 bg-primary/5',
         isOver && 'border-primary bg-primary/10',
         !isDragging && 'border-muted-foreground/20 bg-muted/10'
@@ -626,10 +620,10 @@ function ScheduledSlot({
   onRemove: () => void
 }) {
   return (
-    <div className="min-h-[80px] rounded-lg bg-primary/10 border border-primary/30 p-2 relative group">
+    <div className="h-20 rounded-lg bg-primary/10 border border-primary/30 p-2 relative group overflow-hidden">
       <button
         onClick={onRemove}
-        className="absolute top-1 right-1 p-1 rounded bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+        className="absolute top-1 right-1 p-1 rounded bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground z-10"
       >
         <X className="h-3 w-3" />
       </button>
@@ -639,9 +633,9 @@ function ScheduledSlot({
         </Badge>
         <span className="text-[10px] text-muted-foreground">{session.duration}m</span>
       </div>
-      <h4 className="text-xs font-medium line-clamp-2 mt-1">{session.title}</h4>
+      <h4 className="text-xs font-medium line-clamp-2 mt-0.5">{session.title}</h4>
       {session.host_name && (
-        <p className="text-[10px] text-muted-foreground mt-0.5">{session.host_name}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{session.host_name}</p>
       )}
     </div>
   )

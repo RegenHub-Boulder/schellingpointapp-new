@@ -123,9 +123,10 @@ INSERT INTO tracks (name, slug, color, lead_name, is_active) VALUES
   ('Ethereum Localism', 'eth-localism', '#f59e0b', 'Benjamin / Sara', true),
   ('d/acc', 'dacc', '#8b5cf6', 'Owocki', true),
   ('DeSci', 'desci', '#06b6d4', 'Rodrigo', true),
-  ('DAO & Coordinative Tooling', 'dao-tooling', '#f97316', 'Timothy', true),
+  ('DAO Tooling', 'dao-tooling', '#f97316', 'Timothy', true),
   ('AI & Society', 'ai-society', '#14b8a6', 'Deepa', true),
-  ('Onchain Organizations', 'onchain-orgs', '#84cc16', 'Graham Novak', true);
+  ('Onchain Organizations', 'onchain-orgs', '#84cc16', 'Graham Novak', true),
+  ('Hackathon', 'hackathon', '#ef4444', NULL, true);
 
 -- =============================================================================
 -- TIME SLOTS - FRIDAY (February 13, 2026)
@@ -313,11 +314,11 @@ SELECT v.id, '2026-02-14', '2026-02-14 11:15:00-07', '2026-02-14 12:15:00-07', '
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-14', '2026-02-14 12:20:00-07', '2026-02-14 13:05:00-07', 'DAO & Coordinative Tooling', 'track', false
+SELECT v.id, '2026-02-14', '2026-02-14 12:20:00-07', '2026-02-14 13:05:00-07', 'DAO Tooling', 'track', false
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-14', '2026-02-14 13:10:00-07', '2026-02-14 14:05:00-07', 'DAO & Coordinative Tooling', 'track', false
+SELECT v.id, '2026-02-14', '2026-02-14 13:10:00-07', '2026-02-14 14:05:00-07', 'DAO Tooling', 'track', false
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
@@ -338,7 +339,7 @@ FROM venues v WHERE v.slug = 'regen-hub';
 
 -- Terrible Turtle Saturday (11:00 - 16:30)
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-14', '2026-02-14 11:15:00-07', '2026-02-14 11:45:00-07', 'Unconference', 'unconference', false
+SELECT v.id, '2026-02-14', '2026-02-14 11:15:00-07', '2026-02-14 11:45:00-07', 'Creative Track', 'track', false
 FROM venues v WHERE v.slug = 'terrible-turtle';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
@@ -444,7 +445,7 @@ SELECT v.id, '2026-02-15', '2026-02-15 13:10:00-07', '2026-02-15 14:05:00-07', '
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-15', '2026-02-15 14:10:00-07', '2026-02-15 15:05:00-07', 'Workshop Slot', 'session', false
+SELECT v.id, '2026-02-15', '2026-02-15 14:10:00-07', '2026-02-15 15:05:00-07', 'Unconference', 'unconference', false
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
@@ -491,3 +492,60 @@ FROM venues v WHERE v.slug = 'terrible-turtle';
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
 SELECT v.id, '2026-02-15', '2026-02-15 15:55:00-07', '2026-02-15 16:25:00-07', 'Unconference', 'unconference', false
 FROM venues v WHERE v.slug = 'terrible-turtle';
+
+-- =============================================================================
+-- TIME SLOTS - RIVERSIDE SATURDAY (February 14, 2026)
+-- 13 x 30-min unconference slots from 10:30am to 5:00pm
+-- =============================================================================
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 10:30:00-07', '2026-02-14 11:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 11:00:00-07', '2026-02-14 11:30:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 11:30:00-07', '2026-02-14 12:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 12:00:00-07', '2026-02-14 12:30:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 12:30:00-07', '2026-02-14 13:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 13:00:00-07', '2026-02-14 13:30:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 13:30:00-07', '2026-02-14 14:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 14:00:00-07', '2026-02-14 14:30:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 14:30:00-07', '2026-02-14 15:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 15:00:00-07', '2026-02-14 15:30:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 15:30:00-07', '2026-02-14 16:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 16:00:00-07', '2026-02-14 16:30:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
+
+INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
+SELECT v.id, '2026-02-14', '2026-02-14 16:30:00-07', '2026-02-14 17:00:00-07', 'Unconference', 'unconference', false
+FROM venues v WHERE v.slug = 'riverside';
