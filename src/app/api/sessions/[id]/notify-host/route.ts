@@ -4,8 +4,6 @@ import { getUserFromRequest } from '@/lib/api/getUser'
 import { createAdminClient } from '@/lib/supabase/server'
 import { buildSessionScheduledEmail } from '@/lib/email/session-scheduled'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -121,6 +119,7 @@ export async function POST(
   })
 
   // 7. Send via Resend
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: sendError } = await resend.emails.send({
     from: 'EthBoulder <hello@ethboulder.xyz>',
     to: host.email,
