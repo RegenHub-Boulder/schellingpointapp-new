@@ -212,7 +212,12 @@ export default function AdminSchedulePage() {
       fetch(`/api/sessions/${draggedSession.id}/notify-host`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {})
+      }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          console.error('Notify host failed:', res.status, data)
+        }
+      }).catch((err) => console.error('Notify host error:', err))
     } catch (err) {
       console.error('Error scheduling session:', err)
     }

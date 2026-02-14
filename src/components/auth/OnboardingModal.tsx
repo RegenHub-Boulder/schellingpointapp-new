@@ -250,12 +250,12 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
     const IconComponent = slide.icon
 
     return (
-      <div className="text-center py-4">
-        <div className={cn('inline-flex p-4 rounded-full mb-4', slide.iconBg)}>
-          <IconComponent className={cn('h-10 w-10', slide.iconColor)} />
+      <div className="text-center py-2 sm:py-4">
+        <div className={cn('inline-flex p-3 sm:p-4 rounded-full mb-3 sm:mb-4', slide.iconBg)}>
+          <IconComponent className={cn('h-8 w-8 sm:h-10 sm:w-10', slide.iconColor)} />
         </div>
-        <h3 className="text-xl font-bold mb-3">{slide.title}</h3>
-        <p className="text-muted-foreground mb-4">{slide.description}</p>
+        <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">{slide.title}</h3>
+        <p className="text-muted-foreground text-sm sm:text-base mb-3 sm:mb-4">{slide.description}</p>
         {slide.tip && (
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <span className="font-medium">Tip:</span> {slide.tip}
@@ -479,10 +479,10 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-lg mx-4 bg-card border rounded-xl shadow-xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm overflow-y-auto">
+      <div className="w-full max-w-lg sm:mx-4 bg-card border rounded-t-xl sm:rounded-xl shadow-xl overflow-hidden max-h-[100dvh] sm:max-h-[90dvh] flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b bg-gradient-to-br from-primary/10 to-transparent">
+        <div className="p-4 sm:p-6 border-b bg-gradient-to-br from-primary/10 to-transparent flex-shrink-0">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-primary/20">
               {isIntroStep ? (
@@ -491,7 +491,7 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
                 <Sparkles className="h-5 w-5 text-primary" />
               )}
             </div>
-            <h2 className="text-xl font-bold">{getStepTitle()}</h2>
+            <h2 className="text-lg sm:text-xl font-bold">{getStepTitle()}</h2>
           </div>
           <p className="text-muted-foreground text-sm">
             {isIntroStep
@@ -514,12 +514,12 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 min-h-[300px]">
+        <div className="p-4 sm:p-6 space-y-6 min-h-0 flex-1 overflow-y-auto">
           {isIntroStep ? renderIntroSlide() : renderProfileStep()}
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t bg-muted/20 space-y-3">
+        <div className="p-4 sm:p-6 border-t bg-muted/20 space-y-3 flex-shrink-0">
           {error && (
             <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
               {error}
@@ -530,13 +530,14 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
               variant="ghost"
               onClick={() => step > 1 && setStep(step - 1)}
               disabled={step === 1}
+              className="min-h-[44px]"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
 
             {step < totalSteps ? (
-              <Button onClick={() => setStep(step + 1)} disabled={!canProceed()}>
+              <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="min-h-[44px]">
                 {isIntroStep ? 'Next' : 'Continue'}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -544,7 +545,7 @@ export function OnboardingModal({ userId, email, onComplete }: OnboardingModalPr
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="btn-primary-glow"
+                className="btn-primary-glow min-h-[44px]"
               >
                 {isSubmitting ? 'Saving...' : 'Get Started'}
                 <Sparkles className="h-4 w-4 ml-2" />

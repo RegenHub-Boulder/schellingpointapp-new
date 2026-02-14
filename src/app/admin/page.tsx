@@ -248,7 +248,12 @@ export default function AdminPage() {
       fetch(`/api/sessions/${sessionId}/notify-host`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {})
+      }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          console.error('Notify host failed:', res.status, data)
+        }
+      }).catch((err) => console.error('Notify host error:', err))
     } catch (err) {
       console.error('Error scheduling session:', err)
     }
@@ -343,6 +348,51 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Error notifying host:', err)
     }
+  }
+
+  const [isBulkNotifying, setIsBulkNotifying] = React.useState(false)
+
+  const handleNotifyAllHosts = async () => {
+    const token = getAccessToken()
+    if (!token) return
+
+    const unnotified = sessions.filter(
+      (s) => s.status === 'scheduled' && !s.host_notified_at
+    )
+    if (unnotified.length === 0) return
+
+    setIsBulkNotifying(true)
+    let sentCount = 0
+
+    for (const session of unnotified) {
+      try {
+        const res = await fetch(`/api/sessions/${session.id}/notify-host`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.sent) {
+            sentCount++
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === session.id
+                  ? { ...s, host_notified_at: new Date().toISOString() }
+                  : s
+              )
+            )
+          }
+        } else {
+          const data = await res.json().catch(() => ({}))
+          console.error(`Notify failed for ${session.title}:`, res.status, data)
+        }
+      } catch (err) {
+        console.error(`Notify error for ${session.title}:`, err)
+      }
+    }
+
+    setIsBulkNotifying(false)
+    alert(`Sent ${sentCount} of ${unnotified.length} notifications.`)
   }
 
   const pendingSessions = sessions.filter((s) => s.status === 'pending')
@@ -488,6 +538,30 @@ export default function AdminPage() {
           {/* Scheduled Sessions */}
           {activeTab === 'scheduled' && (
             <div className="space-y-4">
+              {scheduledSessions.length > 0 && scheduledSessions.some((s) => !s.host_notified_at) && (
+                <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    {scheduledSessions.filter((s) => !s.host_notified_at).length} scheduled session(s) have not been notified.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={handleNotifyAllHosts}
+                    disabled={isBulkNotifying}
+                  >
+                    {isBulkNotifying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-4 w-4 mr-1" />
+                        Notify All Hosts
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
               {scheduledSessions.length === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center text-muted-foreground">
