@@ -384,7 +384,10 @@ export default function AdminPage() {
           }
         } else {
           const data = await res.json().catch(() => ({}))
-          console.error(`Notify failed for ${session.title}:`, res.status, data)
+          // Skip sessions with no host silently (curated/speaker sessions)
+          if (!data.skippable) {
+            console.error(`Notify failed for ${session.title}:`, res.status, data)
+          }
         }
       } catch (err) {
         console.error(`Notify error for ${session.title}:`, err)
@@ -392,7 +395,7 @@ export default function AdminPage() {
     }
 
     setIsBulkNotifying(false)
-    alert(`Sent ${sentCount} of ${unnotified.length} notifications.`)
+    alert(`Sent ${sentCount} notification(s). Sessions without linked host profiles were skipped.`)
   }
 
   const pendingSessions = sessions.filter((s) => s.status === 'pending')

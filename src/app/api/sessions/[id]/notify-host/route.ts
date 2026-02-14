@@ -64,7 +64,7 @@ export async function POST(
   const host = Array.isArray(hostRaw) ? hostRaw[0] : hostRaw as { email: string; display_name: string | null } | null
   if (!host?.email) {
     return NextResponse.json(
-      { error: 'No host email found' },
+      { error: 'No host email found', skippable: true },
       { status: 400 }
     )
   }
@@ -130,7 +130,7 @@ export async function POST(
   if (sendError) {
     console.error('Resend error:', sendError)
     return NextResponse.json(
-      { error: 'Failed to send email' },
+      { error: 'Failed to send email', detail: sendError.message },
       { status: 500 }
     )
   }
