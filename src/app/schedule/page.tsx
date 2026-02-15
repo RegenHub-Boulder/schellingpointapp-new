@@ -2,7 +2,8 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Loader2, Calendar, MapPin, Clock, User, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Loader2, Calendar, MapPin, Clock, User, Search, Heart } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -67,8 +68,23 @@ function getDateKey(isoString: string): string {
   return `${year}-${month}-${day}`
 }
 
+function getAccessToken(): string | null {
+  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
+  const stored = localStorage.getItem(storageKey)
+  if (stored) {
+    try {
+      const session = JSON.parse(stored)
+      return session?.access_token || null
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
 export default function SchedulePage() {
-  const { isLoading: authLoading } = useAuth()
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
   const { tracks } = useTracks()
   const [sessions, setSessions] = React.useState<Session[]>([])
   const [timeSlots, setTimeSlots] = React.useState<TimeSlot[]>([])
@@ -78,6 +94,8 @@ export default function SchedulePage() {
   const [sortBy, setSortBy] = React.useState<'time' | 'venue'>('time')
   const [showSelfHosted, setShowSelfHosted] = React.useState(true)
   const [search, setSearch] = React.useState('')
+  const [favoriteIds, setFavoriteIds] = React.useState<Set<string>>(new Set())
+  const [togglingIds, setTogglingIds] = React.useState<Set<string>>(new Set())
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -123,6 +141,120 @@ export default function SchedulePage() {
 
     fetchData()
   }, [])
+
+  // Fetch user's favorites
+  React.useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set())
+      return
+    }
+
+    const fetchFavorites = async () => {
+      const token = getAccessToken()
+      if (!token) return
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&select=session_id`,
+          {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          setFavoriteIds(new Set(data.map((f: { session_id: string }) => f.session_id)))
+        }
+      } catch (err) {
+        console.error('Error fetching favorites:', err)
+      }
+    }
+
+    fetchFavorites()
+  }, [user])
+
+  // Toggle favorite
+  const handleToggleFavorite = async (e: React.MouseEvent, sessionId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    const token = getAccessToken()
+    if (!token) {
+      router.push('/login')
+      return
+    }
+
+    const isFavorited = favoriteIds.has(sessionId)
+
+    // Optimistic update
+    setFavoriteIds((prev) => {
+      const next = new Set(prev)
+      if (isFavorited) {
+        next.delete(sessionId)
+      } else {
+        next.add(sessionId)
+      }
+      return next
+    })
+    setTogglingIds((prev) => new Set(prev).add(sessionId))
+
+    try {
+      if (isFavorited) {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+      } else {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/favorites`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              session_id: sessionId,
+            }),
+          }
+        )
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err)
+      // Revert on error
+      setFavoriteIds((prev) => {
+        const next = new Set(prev)
+        if (isFavorited) {
+          next.add(sessionId)
+        } else {
+          next.delete(sessionId)
+        }
+        return next
+      })
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(sessionId)
+        return next
+      })
+    }
+  }
 
   // Get unique days from time slots
   const days = React.useMemo(() => {
@@ -386,19 +518,38 @@ export default function SchedulePage() {
                         {/* Session cards - compact layout */}
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           {slotSessions.map((session) => (
-                            <Link key={session.id} href={`/sessions/${session.id}`}>
-                              <Card className="h-full card-hover border-border/50 hover:border-primary/30">
-                                <CardContent className="p-3">
-                                  <div className="space-y-1.5">
-                                    {/* Title and format on same row */}
-                                    <div className="flex items-start justify-between gap-2">
-                                      <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
-                                      <Badge variant="secondary" className="capitalize text-[10px] flex-shrink-0">
+                            <Card key={session.id} className="h-full card-hover border-border/50 hover:border-primary/30">
+                              <CardContent className="p-3">
+                                <div className="space-y-1.5">
+                                  {/* Title row with favorite button */}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">{session.title}</h3>
+                                    </Link>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      <Badge variant="secondary" className="capitalize text-[10px]">
                                         {session.format}
                                       </Badge>
+                                      {user && (
+                                        <button
+                                          onClick={(e) => handleToggleFavorite(e, session.id)}
+                                          disabled={togglingIds.has(session.id)}
+                                          className={cn(
+                                            'p-1.5 rounded-full transition-colors',
+                                            favoriteIds.has(session.id)
+                                              ? 'text-red-500'
+                                              : 'text-muted-foreground hover:text-red-500'
+                                          )}
+                                          aria-label={favoriteIds.has(session.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                        >
+                                          <Heart className={cn('h-4 w-4', favoriteIds.has(session.id) && 'fill-current')} />
+                                        </button>
+                                      )}
                                     </div>
+                                  </div>
 
-                                    {/* Host and venue inline */}
+                                  {/* Host and venue inline */}
+                                  <Link href={`/sessions/${session.id}`} className="block">
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                       {session.host_name && (
                                         <div className="flex items-center gap-1 truncate">
@@ -424,10 +575,10 @@ export default function SchedulePage() {
                                         </div>
                                       )}
                                     </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </Link>
+                                  </Link>
+                                </div>
+                              </CardContent>
+                            </Card>
                           ))}
                         </div>
                       </div>
@@ -448,16 +599,36 @@ export default function SchedulePage() {
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {sessionsBySlot['self-hosted'].map((session) => (
-                          <Link key={session.id} href={`/sessions/${session.id}`}>
-                            <Card className="h-full card-hover border-orange-500/30 hover:border-orange-500/50">
-                              <CardContent className="p-3">
-                                <div className="space-y-1.5">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
-                                    <Badge variant="secondary" className="text-[10px] bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30 flex-shrink-0">
+                          <Card key={session.id} className="h-full card-hover border-orange-500/30 hover:border-orange-500/50">
+                            <CardContent className="p-3">
+                              <div className="space-y-1.5">
+                                {/* Title row with favorite button */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-sm leading-snug line-clamp-2">{session.title}</h3>
+                                  </Link>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <Badge variant="secondary" className="text-[10px] bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/30">
                                       Self-Hosted
                                     </Badge>
+                                    {user && (
+                                      <button
+                                        onClick={(e) => handleToggleFavorite(e, session.id)}
+                                        disabled={togglingIds.has(session.id)}
+                                        className={cn(
+                                          'p-1.5 rounded-full transition-colors',
+                                          favoriteIds.has(session.id)
+                                            ? 'text-red-500'
+                                            : 'text-muted-foreground hover:text-red-500'
+                                        )}
+                                        aria-label={favoriteIds.has(session.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                      >
+                                        <Heart className={cn('h-4 w-4', favoriteIds.has(session.id) && 'fill-current')} />
+                                      </button>
+                                    )}
                                   </div>
+                                </div>
+                                <Link href={`/sessions/${session.id}`} className="block">
                                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                     {session.self_hosted_start_time && (
                                       <div className="flex items-center gap-1">
@@ -478,10 +649,10 @@ export default function SchedulePage() {
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </Link>
+                                </Link>
+                              </div>
+                            </CardContent>
+                          </Card>
                         ))}
                       </div>
                     </div>
@@ -509,19 +680,38 @@ export default function SchedulePage() {
                         {/* Session cards - compact layout */}
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           {venueSessions.map((session) => (
-                            <Link key={session.id} href={`/sessions/${session.id}`}>
-                              <Card className="h-full card-hover border-border/50 hover:border-primary/30">
-                                <CardContent className="p-3">
-                                  <div className="space-y-1.5">
-                                    {/* Title and format on same row */}
-                                    <div className="flex items-start justify-between gap-2">
-                                      <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">{session.title}</h3>
-                                      <Badge variant="secondary" className="capitalize text-[10px] flex-shrink-0">
+                            <Card key={session.id} className="h-full card-hover border-border/50 hover:border-primary/30">
+                              <CardContent className="p-3">
+                                <div className="space-y-1.5">
+                                  {/* Title row with favorite button */}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">{session.title}</h3>
+                                    </Link>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      <Badge variant="secondary" className="capitalize text-[10px]">
                                         {session.format}
                                       </Badge>
+                                      {user && (
+                                        <button
+                                          onClick={(e) => handleToggleFavorite(e, session.id)}
+                                          disabled={togglingIds.has(session.id)}
+                                          className={cn(
+                                            'p-1.5 rounded-full transition-colors',
+                                            favoriteIds.has(session.id)
+                                              ? 'text-red-500'
+                                              : 'text-muted-foreground hover:text-red-500'
+                                          )}
+                                          aria-label={favoriteIds.has(session.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                        >
+                                          <Heart className={cn('h-4 w-4', favoriteIds.has(session.id) && 'fill-current')} />
+                                        </button>
+                                      )}
                                     </div>
+                                  </div>
 
-                                    {/* Host and time inline */}
+                                  {/* Host and time inline */}
+                                  <Link href={`/sessions/${session.id}`} className="block">
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                       {session.time_slot && (
                                         <div className="flex items-center gap-1">
@@ -547,10 +737,10 @@ export default function SchedulePage() {
                                         </div>
                                       )}
                                     </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </Link>
+                                  </Link>
+                                </div>
+                              </CardContent>
+                            </Card>
                           ))}
                         </div>
                       </div>
