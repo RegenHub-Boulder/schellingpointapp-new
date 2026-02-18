@@ -499,13 +499,24 @@ After Phase 1, these files/routes will be deleted (not redirected):
 
 ## Completion Criteria
 
-- [ ] `events` table exists with EthBoulder record
-- [ ] All tables have `event_id` column (NOT NULL, indexed)
-- [ ] `event_members` table exists with migrated roles
-- [ ] No hardcoded EVENT_DAYS in codebase
-- [ ] No hardcoded timezone offsets in codebase
-- [ ] `/e/[slug]/*` routes functional
-- [ ] Old routes removed
-- [ ] All RLS policies updated for event scoping
-- [ ] useEvent and useEventRole hooks working
-- [ ] Existing EthBoulder functionality unchanged at new URLs
+- [x] `events` table exists with EthBoulder record
+- [x] All tables have `event_id` column (NOT NULL, indexed)
+- [x] `event_members` table exists with migrated roles
+- [~] No hardcoded EVENT_DAYS in codebase (1 file remaining: EditSessionModal.tsx)
+- [x] No hardcoded timezone offsets in codebase
+- [x] `/e/[slug]/*` routes functional
+- [x] Old routes removed
+- [x] All RLS policies updated for event scoping
+- [x] useEvent and useEventRole hooks working
+- [x] Existing EthBoulder functionality unchanged at new URLs
+
+### Phase 1 Completed: 2026-02-17
+
+**Branch:** `multi-tenant`
+**Commits:** 23 commits
+**Changes:** ~4500 lines added, ~1300 lines removed
+
+**Follow-up items for Phase 2:**
+- Update `EditSessionModal.tsx` to use event context for EVENT_DAYS
+- Update API routes to use event_members instead of is_admin where appropriate
+- Extract `getAccessToken()` to shared utility (duplicated in 6+ files)
