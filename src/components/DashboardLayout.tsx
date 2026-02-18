@@ -22,8 +22,8 @@ import { SettingsModal } from '@/components/SettingsModal'
 import { Footer } from '@/components/Footer'
 import { useAuth } from '@/hooks/useAuth'
 import { cn, votesToCredits } from '@/lib/utils'
+import { useEvent, useEventRole } from '@/contexts/EventContext'
 
-const TOTAL_CREDITS = 100
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
@@ -46,18 +46,23 @@ interface DashboardLayoutProps {
   children: React.ReactNode
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { href: '/sessions', label: 'Sessions', icon: Presentation },
-  { href: '/schedule', label: 'Schedule', icon: Calendar },
-  { href: '/my-schedule', label: 'My Schedule', icon: Heart },
-  { href: '/my-votes', label: 'My Votes', icon: ClipboardList },
-  { href: '/participants', label: 'Participants', icon: Users },
-]
+// Navigation items are now generated dynamically based on event slug
+function getNavItems(eventSlug: string) {
+  return [
+    { href: `/e/${eventSlug}/dashboard`, label: 'Dashboard', icon: BarChart3 },
+    { href: `/e/${eventSlug}/sessions`, label: 'Sessions', icon: Presentation },
+    { href: `/e/${eventSlug}/schedule`, label: 'Schedule', icon: Calendar },
+    { href: `/e/${eventSlug}/my-schedule`, label: 'My Schedule', icon: Heart },
+    { href: `/e/${eventSlug}/my-votes`, label: 'My Votes', icon: ClipboardList },
+    { href: `/e/${eventSlug}/participants`, label: 'Participants', icon: Users },
+  ]
+}
 
-const actionItems = [
-  { href: '/propose', label: 'Propose Session', icon: PlusCircle },
-]
+function getActionItems(eventSlug: string) {
+  return [
+    { href: `/e/${eventSlug}/propose`, label: 'Propose Session', icon: PlusCircle },
+  ]
+}
 
 // Cache key for storing votes in sessionStorage
 const VOTES_CACHE_KEY = 'schelling-point-user-votes'
@@ -103,9 +108,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
   const { user, profile, signOut, needsOnboarding, refreshProfile } = useAuth()
 
+  // Get event context
+  const event = useEvent()
+  const { isAdmin, voteCredits } = useEventRole()
+
+  // Generate nav items based on event slug
+  const navItems = React.useMemo(() => getNavItems(event.slug), [event.slug])
+  const actionItems = React.useMemo(() => getActionItems(event.slug), [event.slug])
+
   const handleSignOut = async () => {
     await signOut()
-    router.push('/login?logged_out=true')
+    router.push(`/e/${event.slug}?logged_out=true`)
   }
   const [showOnboarding, setShowOnboarding] = React.useState(false)
   const [showSettings, setShowSettings] = React.useState(false)
@@ -150,7 +163,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&select=session_id,vote_count`,
+          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,vote_count`,
           {
             headers: {
               'apikey': SUPABASE_KEY,
@@ -176,7 +189,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     fetchUserVotes()
-  }, [user])
+  }, [user, event.id])
 
   // Show onboarding modal when needed
   React.useEffect(() => {
@@ -198,14 +211,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
             <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
+              <Link href={`/e/${event.slug}/dashboard`} className="flex items-center gap-2 font-bold text-lg">
                 <img src="/logo.svg" alt="Schelling Point" className="h-8 w-8 rounded" />
                 <div className="hidden sm:flex flex-col">
                   <span className="font-bold text-lg leading-tight">Schelling Point</span>
-                  <span className="text-xs text-muted-foreground leading-tight font-normal">EthBoulder™</span>
+                  <span className="text-xs text-muted-foreground leading-tight font-normal">{event.name}</span>
                 </div>
               </Link>
-              {profile?.is_admin && (
+              {isAdmin && (
                 <Badge variant="secondary" className="text-xs bg-[#B2FF00]/20 text-[#B2FF00] border-[#B2FF00]/30">
                   Admin
                 </Badge>
@@ -216,7 +229,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center gap-3">
               {!user && (
                 <Link
-                  href="/login"
+                  href={`/e/${event.slug}/login`}
                   className="flex items-center justify-center px-2 md:px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
                 >
                   Sign In
@@ -224,9 +237,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               )}
               {user && (
                 <>
-                  {profile?.is_admin && (
+                  {isAdmin && (
                     <Button variant="outline" size="sm" asChild>
-                      <Link href="/admin">
+                      <Link href={`/e/${event.slug}/admin`}>
                         <Settings className="h-4 w-4 mr-1" />
                         Admin
                       </Link>
@@ -267,7 +280,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {user && (
         <div className="border-b bg-muted/30">
           <div className="container mx-auto px-4 py-3">
-            <CreditBar total={TOTAL_CREDITS} spent={creditsSpent} />
+            <CreditBar total={voteCredits} spent={creditsSpent} />
           </div>
         </div>
       )}
