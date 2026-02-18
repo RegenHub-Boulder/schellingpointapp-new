@@ -60,10 +60,10 @@ ALTER TABLE cohost_invites ADD CONSTRAINT cohost_invites_event_id_fkey
   FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE;
 
 -- Add indexes for query performance
-CREATE INDEX idx_sessions_event_status ON sessions(event_id, status);
-CREATE INDEX idx_sessions_event_votes ON sessions(event_id, total_votes DESC);
-CREATE INDEX idx_votes_event_user ON votes(event_id, user_id);
-CREATE INDEX idx_venues_event ON venues(event_id);
-CREATE INDEX idx_time_slots_event ON time_slots(event_id);
-CREATE INDEX idx_tracks_event ON tracks(event_id);
-CREATE INDEX idx_favorites_event ON favorites(event_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_event_status ON sessions(event_id, status);
+CREATE INDEX IF NOT EXISTS idx_sessions_event_votes ON sessions(event_id, total_votes DESC);
+CREATE INDEX IF NOT EXISTS idx_votes_event_user ON votes(event_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_venues_event ON venues(event_id);
+CREATE INDEX IF NOT EXISTS idx_time_slots_event ON time_slots(event_id);
+CREATE INDEX IF NOT EXISTS idx_tracks_event ON tracks(event_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_event ON favorites(event_id);
