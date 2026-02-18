@@ -55,7 +55,6 @@ CREATE TABLE events (
 );
 
 -- Indexes
-CREATE INDEX idx_events_slug ON events(slug);
 CREATE INDEX idx_events_status ON events(status);
 
 -- RLS
@@ -65,9 +64,22 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view public events" ON events FOR SELECT
   USING (visibility IN ('public', 'unlisted'));
 
+-- Event owners can view their own events (including private)
+CREATE POLICY "Owners can view their own events" ON events FOR SELECT
+  USING (created_by = auth.uid());
+
 -- Event creation requires authentication
 CREATE POLICY "Authenticated users can create events" ON events FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
+  WITH CHECK (auth.uid() IS NOT NULL AND created_by = auth.uid());
+
+-- Event owners can update their events
+CREATE POLICY "Event owners can update their events" ON events FOR UPDATE
+  USING (created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
+
+-- Event owners can delete their events
+CREATE POLICY "Event owners can delete their events" ON events FOR DELETE
+  USING (created_by = auth.uid());
 
 -- Seed EthBoulder 2026 event
 INSERT INTO events (
