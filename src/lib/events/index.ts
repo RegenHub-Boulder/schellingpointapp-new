@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/server';
 import type { Event, EventRow, EventMember } from '@/types/event';
 import { transformEventRow } from '@/types/event';
 
+// Re-export date and timezone utilities
+export * from './dates';
+export * from './timezone';
+
 /**
  * Get event by slug (server-side)
  */
