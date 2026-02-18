@@ -229,7 +229,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center gap-3">
               {!user && (
                 <Link
-                  href={`/e/${event.slug}/login`}
+                  href="/login"
                   className="flex items-center justify-center px-2 md:px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
                 >
                   Sign In
