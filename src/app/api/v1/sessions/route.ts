@@ -75,7 +75,7 @@ const ALLOWED_FIELDS = [
   'title', 'description', 'format', 'duration', 'host_name',
   'topic_tags', 'time_preferences', 'status', 'is_self_hosted',
   'custom_location', 'self_hosted_start_time', 'self_hosted_end_time',
-  'track_id', 'telegram_group_url',
+  'track_id', 'telegram_group_url', 'event_id',
 ]
 
 export async function POST(request: Request) {
