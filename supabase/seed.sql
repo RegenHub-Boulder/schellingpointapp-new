@@ -1,22 +1,7 @@
--- Schelling Point MVP Seed Data
+-- Seed data is managed in migrations:
+-- - 20260205100001_ethboulder_seed_data.sql (venues, tracks, time_slots, sessions)
+-- - 20260217000001_create_events_table.sql (EthBoulder 2026 event)
+-- - 20260217000003_backfill_event_ids.sql (links data to event)
+-- - 20260217000004_create_event_members.sql (migrates admin users)
 
--- =============================================================================
--- VENUES
--- =============================================================================
-INSERT INTO venues (id, name, capacity, features) VALUES
-  ('a0000001-0000-0000-0000-000000000001', 'Main Hall', 200, ARRAY['projector', 'microphone', 'stage']),
-  ('a0000001-0000-0000-0000-000000000002', 'Workshop Room A', 40, ARRAY['whiteboard', 'projector', 'round tables']),
-  ('a0000001-0000-0000-0000-000000000003', 'Workshop Room B', 30, ARRAY['whiteboard', 'projector']),
-  ('a0000001-0000-0000-0000-000000000004', 'Breakout Space', 25, ARRAY['flexible seating', 'informal']);
-
--- =============================================================================
--- TIME SLOTS (Feb 12, 2026)
--- =============================================================================
-INSERT INTO time_slots (id, start_time, end_time, label, is_break) VALUES
-  ('b0000001-0000-0000-0000-000000000001', '2026-02-12 09:00:00-07', '2026-02-12 10:00:00-07', 'Morning Session 1', false),
-  ('b0000001-0000-0000-0000-000000000002', '2026-02-12 10:15:00-07', '2026-02-12 11:15:00-07', 'Morning Session 2', false),
-  ('b0000001-0000-0000-0000-000000000003', '2026-02-12 11:30:00-07', '2026-02-12 12:30:00-07', 'Morning Session 3', false),
-  ('b0000001-0000-0000-0000-000000000004', '2026-02-12 12:30:00-07', '2026-02-12 13:30:00-07', 'Lunch Break', true),
-  ('b0000001-0000-0000-0000-000000000005', '2026-02-12 13:30:00-07', '2026-02-12 14:30:00-07', 'Afternoon Session 1', false),
-  ('b0000001-0000-0000-0000-000000000006', '2026-02-12 14:45:00-07', '2026-02-12 15:45:00-07', 'Afternoon Session 2', false),
-  ('b0000001-0000-0000-0000-000000000007', '2026-02-12 16:00:00-07', '2026-02-12 17:00:00-07', 'Afternoon Session 3', false);
+-- No additional seeding needed.

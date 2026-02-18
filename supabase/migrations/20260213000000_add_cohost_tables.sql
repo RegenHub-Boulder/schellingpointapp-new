@@ -7,6 +7,9 @@
 -- Wrap everything in a transaction so it's all-or-nothing
 BEGIN;
 
+-- Enable pgcrypto for gen_random_bytes()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- session_cohosts: junction table linking sessions to additional host profiles
 CREATE TABLE IF NOT EXISTS session_cohosts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_session_cohosts_user ON session_cohosts(user_id);
 CREATE TABLE IF NOT EXISTS cohost_invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  token TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token TEXT NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   accepted_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'expired', 'revoked')),

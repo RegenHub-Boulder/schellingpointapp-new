@@ -126,9 +126,10 @@ Create from tracks CSV:
 | Ethereum Localism | eth-localism | Benjamin / Sara |
 | d/acc | dacc | Owocki |
 | DeSci | desci | Rodrigo |
-| DAO & Coordinative Tooling | dao-tooling | Timothy |
+| DAO Tooling | dao-tooling | Timothy |
 | AI & Society | ai-society | Deepa |
 | Onchain Organizations | onchain-orgs | Graham Novak |
+| Hackathon | hackathon | Aaron |
 
 ### 3.3 Time Slots
 

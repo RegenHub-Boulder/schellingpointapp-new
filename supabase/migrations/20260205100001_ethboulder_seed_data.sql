@@ -47,9 +47,10 @@ INSERT INTO tracks (name, slug, color, lead_name, is_active) VALUES
   ('Ethereum Localism', 'eth-localism', '#f59e0b', 'Benjamin / Sara', true),
   ('d/acc', 'dacc', '#8b5cf6', 'Owocki', true),
   ('DeSci', 'desci', '#06b6d4', 'Rodrigo', true),
-  ('DAO & Coordinative Tooling', 'dao-tooling', '#f97316', 'Timothy', true),
+  ('DAO Tooling', 'dao-tooling', '#f97316', 'Timothy', true),
   ('AI & Society', 'ai-society', '#14b8a6', 'Deepa', true),
-  ('Onchain Organizations', 'onchain-orgs', '#84cc16', 'Graham Novak', true);
+  ('Onchain Organizations', 'onchain-orgs', '#84cc16', 'Graham Novak', true),
+  ('Hackathon', 'hackathon', '#ef4444', NULL, true);
 
 -- =============================================================================
 -- TIME SLOTS - FRIDAY (February 13, 2026)
@@ -237,11 +238,11 @@ SELECT v.id, '2026-02-14', '2026-02-14 11:15:00-07', '2026-02-14 12:15:00-07', '
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-14', '2026-02-14 12:20:00-07', '2026-02-14 13:05:00-07', 'DAO & Coordinative Tooling', 'track', false
+SELECT v.id, '2026-02-14', '2026-02-14 12:20:00-07', '2026-02-14 13:05:00-07', 'DAO Tooling', 'track', false
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
-SELECT v.id, '2026-02-14', '2026-02-14 13:10:00-07', '2026-02-14 14:05:00-07', 'DAO & Coordinative Tooling', 'track', false
+SELECT v.id, '2026-02-14', '2026-02-14 13:10:00-07', '2026-02-14 14:05:00-07', 'DAO Tooling', 'track', false
 FROM venues v WHERE v.slug = 'regen-hub';
 
 INSERT INTO time_slots (venue_id, day_date, start_time, end_time, label, slot_type, is_break)
