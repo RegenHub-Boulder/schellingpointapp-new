@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { Event, EventRoleName } from '@/types/event';
 import { canRolePerform, isAdminRole, type Permission } from '@/lib/permissions';
+import { hexToHslValues, isValidHexColor, getContrastingForeground } from '@/lib/utils/color';
 
 // Event context value
 interface EventContextValue {
@@ -51,7 +52,7 @@ export function EventProvider({ event, children }: EventProviderProps) {
   const [voteCredits, setVoteCredits] = React.useState<number>(event.voteCreditsPerUser);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Fetch user's role for this event
+  // Fetch user's role for this event, auto-join public events
   React.useEffect(() => {
     const fetchMembership = async () => {
       const token = getAccessToken();
@@ -90,8 +91,36 @@ export function EventProvider({ event, children }: EventProviderProps) {
         if (memberResponse.ok) {
           const data = await memberResponse.json();
           if (data && data.length > 0) {
+            // User is already a member
             setRole(data[0].role as EventRoleName);
             setVoteCredits(data[0].vote_credits ?? event.voteCreditsPerUser);
+          } else if (event.visibility === 'public') {
+            // Auto-join public events as attendee
+            const joinResponse = await fetch(
+              `${SUPABASE_URL}/rest/v1/event_members`,
+              {
+                method: 'POST',
+                headers: {
+                  apikey: SUPABASE_KEY,
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=representation',
+                },
+                body: JSON.stringify({
+                  event_id: event.id,
+                  user_id: userData.id,
+                  role: 'attendee',
+                }),
+              }
+            );
+
+            if (joinResponse.ok) {
+              const joinData = await joinResponse.json();
+              if (joinData && joinData.length > 0) {
+                setRole('attendee');
+                setVoteCredits(joinData[0].vote_credits ?? event.voteCreditsPerUser);
+              }
+            }
           }
         }
       } catch (err) {
@@ -102,7 +131,55 @@ export function EventProvider({ event, children }: EventProviderProps) {
     };
 
     fetchMembership();
-  }, [event.id, event.voteCreditsPerUser]);
+  }, [event.id, event.voteCreditsPerUser, event.visibility]);
+
+  // Apply event theme colors as CSS custom properties
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const theme = event.theme;
+    const appliedProperties: string[] = [];
+
+    // Apply primary color
+    if (theme?.colors?.primary && isValidHexColor(theme.colors.primary)) {
+      const primaryHsl = hexToHslValues(theme.colors.primary);
+      root.style.setProperty('--primary', primaryHsl);
+      appliedProperties.push('--primary');
+
+      // Auto-calculate primary foreground for contrast
+      const primaryForeground = getContrastingForeground(theme.colors.primary);
+      root.style.setProperty('--primary-foreground', primaryForeground);
+      appliedProperties.push('--primary-foreground');
+    }
+
+    // Apply secondary color
+    if (theme?.colors?.secondary && isValidHexColor(theme.colors.secondary)) {
+      const secondaryHsl = hexToHslValues(theme.colors.secondary);
+      root.style.setProperty('--secondary', secondaryHsl);
+      appliedProperties.push('--secondary');
+
+      const secondaryForeground = getContrastingForeground(theme.colors.secondary);
+      root.style.setProperty('--secondary-foreground', secondaryForeground);
+      appliedProperties.push('--secondary-foreground');
+    }
+
+    // Apply accent color
+    if (theme?.colors?.accent && isValidHexColor(theme.colors.accent)) {
+      const accentHsl = hexToHslValues(theme.colors.accent);
+      root.style.setProperty('--accent', accentHsl);
+      appliedProperties.push('--accent');
+
+      const accentForeground = getContrastingForeground(theme.colors.accent);
+      root.style.setProperty('--accent-foreground', accentForeground);
+      appliedProperties.push('--accent-foreground');
+    }
+
+    // Cleanup: remove applied properties when leaving event pages
+    return () => {
+      appliedProperties.forEach((prop) => {
+        root.style.removeProperty(prop);
+      });
+    };
+  }, [event.theme]);
 
   const roleValue = React.useMemo<EventRoleContextValue>(
     () => ({
