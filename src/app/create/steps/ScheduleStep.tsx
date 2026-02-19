@@ -70,6 +70,16 @@ const DURATION_OPTIONS = [
   { value: 120, label: '2 hours' },
 ];
 
+const BREAK_DURATION_OPTIONS = [
+  { value: 5, label: '5 min' },
+  { value: 10, label: '10 min' },
+  { value: 15, label: '15 min' },
+  { value: 20, label: '20 min' },
+  { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
+  { value: 60, label: '1 hour' },
+];
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -677,7 +687,7 @@ function BulkGenerator({ venues, eventDates, existingSlots, onGenerate, onCancel
 
         {/* Include Breaks */}
         <div className="space-y-2">
-          <Label>Breaks</Label>
+          <Label>Breaks Between Sessions</Label>
           <div className="flex items-center gap-3 h-10">
             <button
               type="button"
@@ -698,10 +708,32 @@ function BulkGenerator({ venues, eventDates, existingSlots, onGenerate, onCancel
               />
             </button>
             <span className="text-sm text-muted-foreground">
-              Add {formData.breakDuration} min breaks
+              Add breaks between sessions
             </span>
           </div>
         </div>
+
+        {/* Break Duration (shown when breaks are enabled) */}
+        {formData.includeBreaks && (
+          <div className="space-y-2">
+            <Label htmlFor="bulk-break-duration">Break Duration</Label>
+            <select
+              id="bulk-break-duration"
+              value={formData.breakDuration}
+              onChange={(e) => setFormData({ ...formData, breakDuration: Number(e.target.value) })}
+              className={cn(
+                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                'ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+              )}
+            >
+              {BREAK_DURATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Preview */}
