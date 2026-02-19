@@ -267,7 +267,9 @@ export function isStepValid(state: WizardState, step: number): boolean {
       return (
         state.voting.credits > 0 &&
         state.voting.maxProposalsPerUser > 0 &&
+        Array.isArray(state.voting.allowedFormats) &&
         state.voting.allowedFormats.length > 0 &&
+        Array.isArray(state.voting.allowedDurations) &&
         state.voting.allowedDurations.length > 0
       );
 
@@ -330,10 +332,10 @@ export function getStepValidationErrors(state: WizardState, step: number): strin
       if (state.voting.maxProposalsPerUser <= 0) {
         errors.push('Max proposals per user must be greater than 0');
       }
-      if (state.voting.allowedFormats.length === 0) {
+      if (!Array.isArray(state.voting.allowedFormats) || state.voting.allowedFormats.length === 0) {
         errors.push('At least one session format must be allowed');
       }
-      if (state.voting.allowedDurations.length === 0) {
+      if (!Array.isArray(state.voting.allowedDurations) || state.voting.allowedDurations.length === 0) {
         errors.push('At least one session duration must be allowed');
       }
       break;

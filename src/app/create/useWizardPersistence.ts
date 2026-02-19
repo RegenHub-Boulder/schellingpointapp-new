@@ -8,7 +8,7 @@ import { useWizardState, type WizardState } from './useWizardState';
 // ============================================================================
 
 export const WIZARD_STORAGE_KEY = 'schellingpoint-event-wizard-draft';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2; // Bumped to clear old drafts with incompatible data structures
 
 // ============================================================================
 // Types

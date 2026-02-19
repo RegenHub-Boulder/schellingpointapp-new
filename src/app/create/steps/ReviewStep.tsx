@@ -338,7 +338,7 @@ export function ReviewStep({ state, dispatch, onSubmit, isSubmitting }: ReviewSt
         stepName="venues"
         onEdit={handleEdit}
       >
-        {venues.length > 0 ? (
+        {Array.isArray(venues) && venues.length > 0 ? (
           <div className="space-y-3">
             {venues.map((venue) => (
               <div
@@ -352,7 +352,7 @@ export function ReviewStep({ state, dispatch, onSubmit, isSubmitting }: ReviewSt
                       Capacity: {venue.capacity}
                     </p>
                   )}
-                  {venue.features.length > 0 && (
+                  {Array.isArray(venue.features) && venue.features.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {venue.features.map((feature) => (
                         <span
@@ -412,7 +412,7 @@ export function ReviewStep({ state, dispatch, onSubmit, isSubmitting }: ReviewSt
         stepName="tracks"
         onEdit={handleEdit}
       >
-        {tracks.length > 0 ? (
+        {Array.isArray(tracks) && tracks.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {tracks.map((track) => (
               <span
@@ -476,7 +476,7 @@ export function ReviewStep({ state, dispatch, onSubmit, isSubmitting }: ReviewSt
           <div className="pt-2 border-t">
             <p className="text-sm font-medium text-muted-foreground mb-2">Allowed Formats</p>
             <div className="flex flex-wrap gap-1">
-              {voting.allowedFormats.map((format) => (
+              {Array.isArray(voting.allowedFormats) && voting.allowedFormats.map((format) => (
                 <span
                   key={format}
                   className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-muted"
@@ -491,7 +491,7 @@ export function ReviewStep({ state, dispatch, onSubmit, isSubmitting }: ReviewSt
           <div className="pt-2 border-t">
             <p className="text-sm font-medium text-muted-foreground mb-2">Allowed Durations</p>
             <div className="flex flex-wrap gap-1">
-              {voting.allowedDurations.map((duration) => (
+              {Array.isArray(voting.allowedDurations) && voting.allowedDurations.map((duration) => (
                 <span
                   key={duration}
                   className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-muted"
