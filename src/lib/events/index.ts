@@ -5,6 +5,8 @@ import { transformEventRow } from '@/types/event';
 // Re-export date and timezone utilities
 export * from './dates';
 export * from './timezone';
+export * from './lifecycle';
+export * from './templates';
 
 /**
  * Get event by slug (server-side)
