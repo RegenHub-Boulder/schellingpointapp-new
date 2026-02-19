@@ -15,7 +15,8 @@ export default function EventPage() {
   const statusBadge = {
     draft: { label: 'Draft', variant: 'secondary' as const },
     published: { label: 'Open', variant: 'default' as const },
-    voting: { label: 'Voting Open', variant: 'default' as const },
+    proposals_open: { label: 'Proposals Open', variant: 'default' as const },
+    voting_open: { label: 'Voting Open', variant: 'default' as const },
     scheduling: { label: 'Scheduling', variant: 'secondary' as const },
     live: { label: 'Live Now', variant: 'destructive' as const },
     completed: { label: 'Completed', variant: 'secondary' as const },

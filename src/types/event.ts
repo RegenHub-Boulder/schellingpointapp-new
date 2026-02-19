@@ -2,7 +2,8 @@
 export type EventStatus =
   | 'draft'
   | 'published'
-  | 'voting'
+  | 'proposals_open'
+  | 'voting_open'
   | 'scheduling'
   | 'live'
   | 'completed'
