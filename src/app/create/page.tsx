@@ -3,13 +3,36 @@
 import * as React from 'react';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 import { useWizardStateWithPersistence } from './useWizardPersistence';
 import { WizardNavigation } from './WizardNavigation';
 import { WIZARD_STEPS, getStepFromNumber, type WizardState, type WizardAction } from './useWizardState';
+
+// ============================================================================
+// Auth Helpers
+// ============================================================================
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
+function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+  const stored = localStorage.getItem(storageKey);
+  if (stored) {
+    try {
+      const session = JSON.parse(stored);
+      return session?.access_token || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 // Lazy load step components for better performance
 const BasicsStep = React.lazy(() => import('./steps/BasicsStep'));
@@ -126,6 +149,7 @@ function ResumeDraftDialog({ timestamp, onResume, onStartFresh }: ResumeDraftDia
 // ============================================================================
 
 function CreateWizardContent() {
+  const router = useRouter();
   const {
     state,
     dispatch,
@@ -141,6 +165,8 @@ function CreateWizardContent() {
   const [showResumeDialog, setShowResumeDialog] = React.useState(false);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [slugSuggestions, setSlugSuggestions] = React.useState<string[]>([]);
 
   // Check for saved draft on mount
   React.useEffect(() => {
@@ -181,25 +207,71 @@ function CreateWizardContent() {
   // Handler for event submission
   const handleSubmit = React.useCallback(async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
+    setSlugSuggestions([]);
+
     try {
-      // TODO: P2.9.3 - Implement actual event creation API call
-      // For now, simulate a delay and log the state
-      console.log('Creating event with state:', state);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Get the access token
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        setSubmitError('You must be logged in to create an event. Please sign in and try again.');
+        setIsSubmitting(false);
+        return;
+      }
 
-      // After successful creation, clear the draft and redirect
-      // clearDraft();
-      // router.push(`/e/${state.basics.slug}`);
+      // Call the event creation API
+      const response = await fetch('/api/events/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ wizardState: state }),
+      });
 
-      // For now, just show a success message
-      alert('Event creation will be implemented in P2.9.3');
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        // Handle specific error cases
+        if (response.status === 401) {
+          setSubmitError('Your session has expired. Please sign in again.');
+        } else if (response.status === 409) {
+          // Slug conflict - show suggestions
+          setSubmitError(data.error || 'This event URL is already taken.');
+          if (data.suggestions?.length > 0) {
+            setSlugSuggestions(data.suggestions);
+          }
+        } else {
+          setSubmitError(data.error || 'Failed to create event. Please try again.');
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Success! Clear the draft and redirect to the new event dashboard
+      clearDraft();
+
+      // Redirect to the event dashboard
+      const eventSlug = data.eventSlug || data.event?.slug;
+      if (eventSlug) {
+        router.push(`/e/${eventSlug}/admin`);
+      } else {
+        // Fallback to home if no slug (shouldn't happen)
+        router.push('/');
+      }
     } catch (error) {
       console.error('Error creating event:', error);
-      alert('Failed to create event. Please try again.');
-    } finally {
+      setSubmitError('An unexpected error occurred. Please try again.');
       setIsSubmitting(false);
     }
-  }, [state]);
+  }, [state, clearDraft, router]);
+
+  // Handler to apply a slug suggestion
+  const handleApplySlugSuggestion = React.useCallback((suggestion: string) => {
+    dispatch({ type: 'UPDATE_BASICS', payload: { slug: suggestion } });
+    setSlugSuggestions([]);
+    setSubmitError(null);
+  }, [dispatch]);
 
   // Get current step component
   const renderStep = () => {
@@ -294,6 +366,34 @@ function CreateWizardContent() {
 
           {/* Wizard Content */}
           <div className="space-y-8">
+            {/* Error Alert */}
+            {submitError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-2">
+                  <p>{submitError}</p>
+                  {slugSuggestions.length > 0 && (
+                    <div className="pt-2">
+                      <p className="text-sm font-medium mb-2">Try one of these available URLs:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {slugSuggestions.map((suggestion) => (
+                          <Button
+                            key={suggestion}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleApplySlugSuggestion(suggestion)}
+                            className="font-mono text-xs"
+                          >
+                            {suggestion}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Step Content */}
             <div className="min-h-[400px]">
               {renderStep()}
