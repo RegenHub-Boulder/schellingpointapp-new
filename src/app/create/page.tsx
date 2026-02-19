@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
@@ -18,6 +18,7 @@ const VenuesStep = React.lazy(() => import('./steps/VenuesStep'));
 const TracksStep = React.lazy(() => import('./steps/TracksStep'));
 const VotingStep = React.lazy(() => import('./steps/VotingStep'));
 const BrandingStep = React.lazy(() => import('./steps/BrandingStep'));
+const ReviewStep = React.lazy(() => import('./steps/ReviewStep'));
 
 // ============================================================================
 // Step Props Interface
@@ -58,183 +59,6 @@ function ScheduleStepPlaceholder({ state }: StepProps) {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function ReviewStepPlaceholder({ state }: StepProps) {
-  const { basics, dates, venues, tracks, voting, branding } = state;
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Review Your Event</CardTitle>
-          <CardDescription>
-            Review the details before creating your event
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Basics Summary */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Event Details
-            </h4>
-            <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Name:</span>
-                <span className="font-medium">{basics.name || 'Not set'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">URL:</span>
-                <span className="font-mono text-sm">/e/{basics.slug || 'not-set'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Type:</span>
-                <span className="capitalize">{basics.eventType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Visibility:</span>
-                <span className="capitalize">{basics.visibility}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dates Summary */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Dates & Location
-            </h4>
-            <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Start:</span>
-                <span>{dates.startDate || 'Not set'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">End:</span>
-                <span>{dates.endDate || 'Not set'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Timezone:</span>
-                <span>{dates.timezone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Location Type:</span>
-                <span className="capitalize">{dates.locationType}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Venues Summary */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Venues ({venues.length})
-            </h4>
-            {venues.length > 0 ? (
-              <div className="rounded-lg border p-4 space-y-2">
-                {venues.map((venue) => (
-                  <div key={venue.id} className="flex justify-between">
-                    <span>{venue.name}</span>
-                    <span className="text-muted-foreground">
-                      {venue.capacity ? `${venue.capacity} capacity` : 'No capacity set'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No venues configured</p>
-            )}
-          </div>
-
-          {/* Tracks Summary */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Tracks ({tracks.length})
-            </h4>
-            {tracks.length > 0 ? (
-              <div className="rounded-lg border p-4 flex flex-wrap gap-2">
-                {tracks.map((track) => (
-                  <span
-                    key={track.id}
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                    style={{ backgroundColor: `${track.color}20`, color: track.color }}
-                  >
-                    {track.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No tracks configured</p>
-            )}
-          </div>
-
-          {/* Voting Summary */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Voting Configuration
-            </h4>
-            <div className="rounded-lg border p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mechanism:</span>
-                <span className="capitalize">{voting.mechanism}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Credits per user:</span>
-                <span>{voting.credits}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Max proposals:</span>
-                <span>{voting.maxProposalsPerUser} per user</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Branding Summary */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Branding
-            </h4>
-            <div className="rounded-lg border p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex gap-2">
-                  <div
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: branding.theme.primary }}
-                    title="Primary color"
-                  />
-                  <div
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: branding.theme.secondary }}
-                    title="Secondary color"
-                  />
-                  <div
-                    className="w-6 h-6 rounded-full border"
-                    style={{ backgroundColor: branding.theme.accent }}
-                    title="Accent color"
-                  />
-                </div>
-                <span className="text-muted-foreground">
-                  Theme: {branding.theme.mode}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Warning card */}
-      <Card className="border-amber-500/50 bg-amber-500/5">
-        <CardContent className="flex items-start gap-4 py-4">
-          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Ready to create?</p>
-            <p className="text-sm text-muted-foreground">
-              The event creation feature will be available soon. For now, your draft is saved
-              and you can return to continue editing.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
   );
 }
 
@@ -316,6 +140,7 @@ function CreateWizardContent() {
   // State for showing resume dialog
   const [showResumeDialog, setShowResumeDialog] = React.useState(false);
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Check for saved draft on mount
   React.useEffect(() => {
@@ -352,6 +177,29 @@ function CreateWizardContent() {
   const handlePrev = React.useCallback(() => {
     // No additional logic needed
   }, []);
+
+  // Handler for event submission
+  const handleSubmit = React.useCallback(async () => {
+    setIsSubmitting(true);
+    try {
+      // TODO: P2.9.3 - Implement actual event creation API call
+      // For now, simulate a delay and log the state
+      console.log('Creating event with state:', state);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // After successful creation, clear the draft and redirect
+      // clearDraft();
+      // router.push(`/e/${state.basics.slug}`);
+
+      // For now, just show a success message
+      alert('Event creation will be implemented in P2.9.3');
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert('Failed to create event. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [state]);
 
   // Get current step component
   const renderStep = () => {
@@ -398,7 +246,16 @@ function CreateWizardContent() {
           </Suspense>
         );
       case 'review':
-        return <ReviewStepPlaceholder {...props} />;
+        return (
+          <Suspense fallback={<StepLoadingFallback />}>
+            <ReviewStep
+              state={state}
+              dispatch={dispatch}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
+          </Suspense>
+        );
       default:
         return <div>Unknown step</div>;
     }
