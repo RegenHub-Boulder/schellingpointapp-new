@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -38,6 +38,7 @@ function getAccessToken(): string | null {
 const BasicsStep = React.lazy(() => import('./steps/BasicsStep'));
 const DatesStep = React.lazy(() => import('./steps/DatesStep'));
 const VenuesStep = React.lazy(() => import('./steps/VenuesStep'));
+const ScheduleStep = React.lazy(() => import('./steps/ScheduleStep'));
 const TracksStep = React.lazy(() => import('./steps/TracksStep'));
 const VotingStep = React.lazy(() => import('./steps/VotingStep'));
 const BrandingStep = React.lazy(() => import('./steps/BrandingStep'));
@@ -50,39 +51,6 @@ const ReviewStep = React.lazy(() => import('./steps/ReviewStep'));
 interface StepProps {
   state: WizardState;
   dispatch: React.Dispatch<WizardAction>;
-}
-
-// ============================================================================
-// Placeholder Components for Missing Steps
-// ============================================================================
-
-function ScheduleStepPlaceholder({ state }: StepProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Schedule Configuration</CardTitle>
-        <CardDescription>
-          Configure time slots for your event
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center">
-          <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">
-            Schedule configuration will be available soon.
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            You can skip this step and configure the schedule later.
-          </p>
-          {state.venues.length === 0 && (
-            <p className="text-sm text-amber-500 mt-4">
-              Tip: Add venues first to create time slots for specific rooms.
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 // ============================================================================
@@ -298,7 +266,11 @@ function CreateWizardContent() {
           </Suspense>
         );
       case 'schedule':
-        return <ScheduleStepPlaceholder {...props} />;
+        return (
+          <Suspense fallback={<StepLoadingFallback />}>
+            <ScheduleStep {...props} />
+          </Suspense>
+        );
       case 'tracks':
         return (
           <Suspense fallback={<StepLoadingFallback />}>
