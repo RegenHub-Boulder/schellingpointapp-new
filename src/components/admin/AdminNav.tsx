@@ -11,6 +11,7 @@ import {
   Megaphone,
   BarChart3,
   Tags,
+  Ticket,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +31,7 @@ export function AdminNav({ eventSlug, canManageSchedule, canManageVenues }: Admi
   const isCommunications = pathname === `${baseUrl}/communications`
   const isAnalytics = pathname === `${baseUrl}/analytics`
   const isTracks = pathname === `${baseUrl}/tracks`
+  const isTickets = pathname === `${baseUrl}/tickets`
 
   const navItems = [
     {
@@ -59,6 +61,13 @@ export function AdminNav({ eventSlug, canManageSchedule, canManageVenues }: Admi
       icon: <Tags className="h-4 w-4" />,
       active: isTracks,
       show: true, // All admins can manage tracks
+    },
+    {
+      label: 'Tickets',
+      href: `${baseUrl}/tickets`,
+      icon: <Ticket className="h-4 w-4" />,
+      active: isTickets,
+      show: true, // All admins can manage tickets
     },
     {
       label: 'Communications',
