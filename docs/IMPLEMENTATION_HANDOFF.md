@@ -180,13 +180,46 @@ All tasks completed:
 
 ---
 
-### Phase 7: Ticketing & Revenue
+### Phase 7: Ticketing & Revenue ✅ CORE COMPLETE
 
-**Key Features**:
-- Stripe integration
-- Ticket tiers
-- Revenue distribution to speakers
-- Refund handling
+**Completed (P7.1-P7.5):**
+- **P7.1 Ticket Tier Configuration** ✅
+  - `ticket_tiers` and `tickets` tables with RLS
+  - Triggers for quantity_sold updates and auto-member creation
+  - Admin tickets page at `/e/[slug]/admin/tickets`
+  - Migration: `20260220232843_ticketing.sql`
+
+- **P7.2 Stripe Payment Integration** ✅
+  - Stripe SDK and utilities (`src/lib/payments/stripe.ts`)
+  - Public tickets page with tier selection (`/e/[slug]/tickets`)
+  - Checkout API with Stripe session creation
+  - Webhook handler for payment events (`/api/webhooks/stripe`)
+  - Success page for purchase confirmation
+
+- **P7.3 QR Code Ticket Generation** ✅
+  - JWT-based ticket tokens (`src/lib/tickets/qr.ts`)
+  - TicketQR component for displaying QR codes
+  - QR code API endpoint
+  - Ticket detail page with QR display (`/e/[slug]/tickets/[ticketId]`)
+
+- **P7.4 Check-In Scanner** ✅
+  - QRScanner component using html5-qrcode
+  - Check-in page for volunteers (`/e/[slug]/checkin`)
+  - Check-in API with validation
+  - Check-in stats display
+
+- **P7.5 Revenue Dashboard** ✅
+  - Revenue dashboard with stats cards (`/e/[slug]/admin/revenue`)
+  - Sales breakdown by tier
+  - 30-day sales chart
+  - Revenue link in AdminNav
+
+**Remaining (Optional/Advanced):**
+- P7.6: Treasury configuration
+- P7.7: Smart contract development
+- P7.8: Wallet connection
+- P7.9: Payout calculation
+- P7.10: Distribution and claims
 
 ---
 
@@ -227,6 +260,18 @@ All tasks completed:
 - `src/components/admin/SessionFilters.tsx` - Search & filter panel
 - `src/components/admin/BatchActions.tsx` - Floating batch action toolbar
 - `src/lib/scheduling/auto-scheduler.ts` - Greedy auto-scheduling algorithm
+
+### Ticketing System (Phase 7)
+- `src/lib/payments/stripe.ts` - Stripe SDK and checkout helpers
+- `src/lib/tickets/qr.ts` - JWT-based QR code generation/verification
+- `src/components/TicketQR.tsx` - QR code display component
+- `src/components/QRScanner.tsx` - Camera-based QR scanner
+- `src/app/e/[slug]/tickets/page.tsx` - Public ticket purchase page
+- `src/app/e/[slug]/checkin/page.tsx` - Volunteer check-in scanner
+- `src/app/e/[slug]/admin/revenue/page.tsx` - Revenue dashboard
+- `src/app/api/v1/events/[slug]/checkout/route.ts` - Stripe checkout API
+- `src/app/api/v1/events/[slug]/checkin/route.ts` - Check-in API
+- `src/app/api/webhooks/stripe/route.ts` - Stripe webhook handler
 - `src/app/api/v1/events/[slug]/sessions/batch/route.ts` - Batch operations API
 - `src/app/api/v1/events/[slug]/admin/auto-schedule/route.ts` - Auto-schedule API
 
