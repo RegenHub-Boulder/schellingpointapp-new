@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { EditSessionModal } from '@/components/EditSessionModal'
 import { ManageCohostsSection } from '@/components/ManageCohostsSection'
+import { AddToCalendar } from '@/components/AddToCalendar'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { votesToCredits } from '@/lib/utils'
@@ -93,30 +94,25 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
   const [isFavorited, setIsFavorited] = React.useState(false)
   const [allUserVotes, setAllUserVotes] = React.useState<Record<string, number>>({})
   const [showShareToast, setShowShareToast] = React.useState(false)
-  const [showCalendarMenu, setShowCalendarMenu] = React.useState(false)
   const [showHostCard, setShowHostCard] = React.useState<string | null>(null)
   const [showEditModal, setShowEditModal] = React.useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
-  const calendarMenuRef = React.useRef<HTMLDivElement>(null)
   const hostCardRef = React.useRef<HTMLDivElement>(null)
 
-  // Close calendar menu and host card when clicking outside
+  // Close host card when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (calendarMenuRef.current && !calendarMenuRef.current.contains(event.target as Node)) {
-        setShowCalendarMenu(false)
-      }
       if (hostCardRef.current && !hostCardRef.current.contains(event.target as Node)) {
         setShowHostCard(null)
       }
     }
 
-    if (showCalendarMenu || showHostCard) {
+    if (showHostCard) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showCalendarMenu, showHostCard])
+  }, [showHostCard])
 
   // Calculate credits spent
   const creditsSpent = React.useMemo(() => {
@@ -418,90 +414,6 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
     } finally {
       setIsDeleting(false)
     }
-  }
-
-  // Generate calendar event data
-  const getCalendarEventData = () => {
-    if (!session?.time_slot) return null
-
-    const startDate = new Date(session.time_slot.start_time)
-    const endDate = new Date(session.time_slot.end_time)
-    const title = session.title
-    const description = [
-      session.description || '',
-      '',
-      `Format: ${session.format}`,
-      session.host_name ? `Host: ${session.host_name}` : '',
-      '',
-      `View session: ${window.location.href}`,
-    ].filter(Boolean).join('\n')
-    const location = session.venue?.name || session.custom_location || event.locationName || event.name
-
-    return { startDate, endDate, title, description, location }
-  }
-
-  // Add to Google Calendar
-  const handleAddToGoogleCalendar = () => {
-    const calendarEvent = getCalendarEventData()
-    if (!calendarEvent) return
-
-    const formatDate = (date: Date) => {
-      return date.toISOString().replace(/-|:|\.\d{3}/g, '')
-    }
-
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: calendarEvent.title,
-      dates: `${formatDate(calendarEvent.startDate)}/${formatDate(calendarEvent.endDate)}`,
-      details: calendarEvent.description,
-      location: calendarEvent.location,
-    })
-
-    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank')
-    setShowCalendarMenu(false)
-  }
-
-  // Download ICS file (works with Apple Calendar, Outlook, etc.)
-  const handleDownloadICS = () => {
-    const calendarEvent = getCalendarEventData()
-    if (!calendarEvent) return
-
-    const formatICSDate = (date: Date) => {
-      return date.toISOString().replace(/-|:|\.\d{3}/g, '').slice(0, -1) + 'Z'
-    }
-
-    const escapeICS = (str: string) => {
-      return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
-    }
-
-    const icsContent = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//SchellingPoint//Session//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `DTSTART:${formatICSDate(calendarEvent.startDate)}`,
-      `DTEND:${formatICSDate(calendarEvent.endDate)}`,
-      `SUMMARY:${escapeICS(calendarEvent.title)}`,
-      `DESCRIPTION:${escapeICS(calendarEvent.description)}`,
-      `LOCATION:${escapeICS(calendarEvent.location)}`,
-      `UID:${session.id}@schellingpoint.app`,
-      `DTSTAMP:${formatICSDate(new Date())}`,
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n')
-
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${session.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    setShowCalendarMenu(false)
   }
 
   if (isLoading) {
@@ -1024,34 +936,13 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                   Share Session
                 </Button>
                 {session.time_slot && (
-                  <div className="relative" ref={calendarMenuRef}>
-                    <Button
-                      className="w-full justify-start"
-                      variant="outline"
-                      onClick={() => setShowCalendarMenu(!showCalendarMenu)}
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Add to Calendar
-                    </Button>
-                    {showCalendarMenu && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-10 py-1">
-                        <button
-                          className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                          onClick={handleAddToGoogleCalendar}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Google Calendar
-                        </button>
-                        <button
-                          className="w-full px-4 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                          onClick={handleDownloadICS}
-                        >
-                          <Calendar className="h-4 w-4" />
-                          Download .ics (Apple, Outlook)
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <AddToCalendar
+                    session={session}
+                    eventSlug={event.slug}
+                    eventLocation={event.locationName}
+                    variant="outline"
+                    size="default"
+                  />
                 )}
                 {/* Add Telegram Group button for host, co-host, or admin (when no group URL set) */}
                 {user && !session.telegram_group_url && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || isAdmin) && (

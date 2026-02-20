@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, SlidersHorizontal, Loader2 } from 'lucide-react'
+import { Search, SlidersHorizontal, Loader2, Heart, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SessionCard } from '@/components/SessionCard'
@@ -11,6 +11,28 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { votesToCredits, cn } from '@/lib/utils'
+
+// Helper to format date in timezone as yyyy-MM-dd
+function formatDateInTimezone(date: Date, timezone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  return formatter.format(date)
+}
+
+// Helper to format date in timezone as readable day label
+function formatDayLabel(date: Date, timezone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+  return formatter.format(date)
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -25,6 +47,7 @@ const sortOptions = [
   { value: 'votes', label: 'Most Voted' },
   { value: 'recent', label: 'Recent' },
   { value: 'alpha', label: 'A-Z' },
+  { value: 'time', label: 'By Time' },
 ]
 
 function getAccessToken(): string | null {
@@ -67,6 +90,24 @@ export default function EventSessionsPage() {
   const [status, setStatus] = React.useState('all')
   const [sort, setSort] = React.useState('votes')
   const [showFilters, setShowFilters] = React.useState(false)
+  const [day, setDay] = React.useState<string>('all')
+  const [showFavoritesOnly, setShowFavoritesOnly] = React.useState(false)
+
+  // Generate list of event days
+  const eventDays = React.useMemo(() => {
+    const days: { date: string; label: string }[] = []
+    const start = new Date(event.startDate)
+    const end = new Date(event.endDate)
+    const current = new Date(start)
+
+    while (current <= end) {
+      const dateStr = formatDateInTimezone(current, event.timezone)
+      const label = formatDayLabel(current, event.timezone)
+      days.push({ date: dateStr, label })
+      current.setDate(current.getDate() + 1)
+    }
+    return days
+  }, [event.startDate, event.endDate, event.timezone])
 
   // Stable sort positions — captures server order on load, prevents jumps during voting
   const stableVoteOrderRef = React.useRef<Record<string, number>>({})
@@ -403,6 +444,23 @@ export default function EventSessionsPage() {
       filtered = filtered.filter((s) => s.status === 'approved')
     }
 
+    // Day filter (only for scheduled sessions)
+    if (day !== 'all') {
+      filtered = filtered.filter((s) => {
+        if (!s.time_slot?.start_time) return false
+        const sessionDate = formatDateInTimezone(
+          new Date(s.time_slot.start_time),
+          event.timezone
+        )
+        return sessionDate === day
+      })
+    }
+
+    // Favorites filter
+    if (showFavoritesOnly) {
+      filtered = filtered.filter((s) => favorites.has(s.id))
+    }
+
     // Sort
     if (sort === 'votes') {
       // Use stable positions from last server fetch — prevents jumping during voting
@@ -416,10 +474,17 @@ export default function EventSessionsPage() {
       )
     } else if (sort === 'alpha') {
       filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title))
+    } else if (sort === 'time') {
+      // Sort by scheduled time (scheduled sessions first, then unscheduled)
+      filtered = [...filtered].sort((a, b) => {
+        const aTime = a.time_slot?.start_time ? new Date(a.time_slot.start_time).getTime() : Infinity
+        const bTime = b.time_slot?.start_time ? new Date(b.time_slot.start_time).getTime() : Infinity
+        return aTime - bTime
+      })
     }
 
     return filtered
-  }, [sessions, search, format, track, status, sort])
+  }, [sessions, search, format, track, status, sort, day, showFavoritesOnly, favorites, event.timezone])
 
   if (isLoading) {
     return (
@@ -466,6 +531,63 @@ export default function EventSessionsPage() {
 
           {showFilters && (
             <div className="flex flex-wrap gap-4 p-4 rounded-lg border bg-muted/30">
+              {/* Favorites toggle */}
+              {user && (
+                <div className="w-full">
+                  <button
+                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors',
+                      showFavoritesOnly
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background border hover:bg-accent'
+                    )}
+                  >
+                    <Heart className={cn('h-4 w-4', showFavoritesOnly && 'fill-current')} />
+                    My Favorites Only
+                  </button>
+                </div>
+              )}
+
+              {/* Day filter */}
+              {eventDays.length > 1 && (
+                <div className="space-y-1.5 w-full sm:w-auto">
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Day
+                  </label>
+                  <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <div className="flex gap-1.5 pb-2 sm:pb-0 sm:flex-wrap">
+                      <button
+                        onClick={() => setDay('all')}
+                        className={cn(
+                          'px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap',
+                          day === 'all'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-background border hover:bg-accent'
+                        )}
+                      >
+                        All Days
+                      </button>
+                      {eventDays.map((d) => (
+                        <button
+                          key={d.date}
+                          onClick={() => setDay(d.date)}
+                          className={cn(
+                            'px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap',
+                            day === d.date
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-background border hover:bg-accent'
+                          )}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Format</label>
                 <div className="flex flex-wrap gap-1.5">

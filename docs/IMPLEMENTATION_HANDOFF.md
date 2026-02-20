@@ -140,14 +140,43 @@ All tasks completed:
 
 ---
 
-### Phase 6: Attendee Experience
+### Phase 6: Attendee Experience ✅ COMPLETE
 
-**Key Features**:
-- Per-event voting with isolated credits
-- Session discovery with search/filters
-- Calendar export (.ics)
-- Personal schedule builder
-- Mobile-optimized views
+**Completed:**
+- **P6.1 Voting Verification** ✅
+  - Vote credits stored per event in `event_members.vote_credits`
+  - All vote queries scoped by `event_id`
+  - Vote submissions include `event_id`
+
+- **P6.2 Session Discovery** ✅
+  - Day filter for multi-day events
+  - Favorites filter ("My Favorites Only")
+  - Sort by time option
+  - Enhanced filter panel UI
+
+- **P6.3 Calendar Integration** ✅
+  - ICS file generator (`src/lib/calendar/ics.ts`)
+  - Single session ICS download (`/api/v1/events/{slug}/sessions/{id}/calendar`)
+  - Full schedule ICS export (`/api/v1/events/{slug}/calendar`)
+  - Favorites-only export (`?favorites=true`)
+  - AddToCalendar component with Google, Outlook, Yahoo options
+  - ExportScheduleButton on schedule page
+  - Dropdown menu UI component added
+
+- **P6.5 Session RSVP** ✅
+  - `session_rsvps` table with confirmed/waitlist status
+  - Auto-promote trigger when spot opens
+  - RSVP count columns on sessions table
+  - RSVPButton component with capacity display
+  - RSVPIndicator for session cards
+  - RLS policies for event-scoped access
+  - Migration: `20260220222252_session_rsvps.sql`
+
+**Remaining:**
+- P6.1: Event-scoped voting verification (verify credits isolation)
+- P6.4: PWA support (optional)
+- P6.6: Post-session feedback (optional)
+- P6.7: Session resources (optional)
 
 ---
 
@@ -200,6 +229,14 @@ All tasks completed:
 - `src/lib/scheduling/auto-scheduler.ts` - Greedy auto-scheduling algorithm
 - `src/app/api/v1/events/[slug]/sessions/batch/route.ts` - Batch operations API
 - `src/app/api/v1/events/[slug]/admin/auto-schedule/route.ts` - Auto-schedule API
+
+### Attendee Features (Phase 6)
+- `src/lib/calendar/ics.ts` - ICS file generator with Google/Outlook/Yahoo URL builders
+- `src/components/AddToCalendar.tsx` - AddToCalendar dropdown + ExportScheduleButton
+- `src/components/RSVPButton.tsx` - RSVP button + indicator with capacity tracking
+- `src/components/ui/dropdown-menu.tsx` - Radix dropdown menu component
+- `src/app/api/v1/events/[slug]/calendar/route.ts` - Full schedule ICS export
+- `src/app/api/v1/events/[slug]/sessions/[id]/calendar/route.ts` - Single session ICS
 
 ### Migrations
 - `supabase/migrations/20260217000001_create_events_table.sql`

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { ExportScheduleButton } from '@/components/AddToCalendar'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
@@ -378,11 +379,22 @@ export default function SchedulePage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Schedule</h1>
-          <p className="text-muted-foreground mt-1">
-            Browse sessions by day
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Schedule</h1>
+            <p className="text-muted-foreground mt-1">
+              Browse sessions by day
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <ExportScheduleButton
+              eventSlug={event.slug}
+              eventName={event.name}
+              favoritesOnly={false}
+              variant="outline"
+              size="sm"
+            />
+          </div>
         </div>
 
         {sessions.length === 0 ? (
