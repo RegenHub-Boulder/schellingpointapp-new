@@ -12,6 +12,7 @@ import {
   BarChart3,
   Tags,
   Ticket,
+  DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,6 +33,7 @@ export function AdminNav({ eventSlug, canManageSchedule, canManageVenues }: Admi
   const isAnalytics = pathname === `${baseUrl}/analytics`
   const isTracks = pathname === `${baseUrl}/tracks`
   const isTickets = pathname === `${baseUrl}/tickets`
+  const isRevenue = pathname === `${baseUrl}/revenue`
 
   const navItems = [
     {
@@ -68,6 +70,13 @@ export function AdminNav({ eventSlug, canManageSchedule, canManageVenues }: Admi
       icon: <Ticket className="h-4 w-4" />,
       active: isTickets,
       show: true, // All admins can manage tickets
+    },
+    {
+      label: 'Revenue',
+      href: `${baseUrl}/revenue`,
+      icon: <DollarSign className="h-4 w-4" />,
+      active: isRevenue,
+      show: true, // Owners/admins can view revenue
     },
     {
       label: 'Communications',

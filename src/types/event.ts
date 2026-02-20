@@ -85,6 +85,8 @@ export interface EventRow {
   visibility: EventVisibility;
   schedule_published_at: string | null;
   last_schedule_change_at: string | null;
+  ticketing_enabled: boolean;
+  stripe_account_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -120,6 +122,8 @@ export interface Event {
   visibility: EventVisibility;
   schedulePublishedAt: Date | null;
   lastScheduleChangeAt: Date | null;
+  ticketingEnabled: boolean;
+  stripeAccountId: string | null;
 }
 
 // Event member relationship
@@ -164,5 +168,7 @@ export function transformEventRow(row: EventRow): Event {
     visibility: row.visibility,
     schedulePublishedAt: row.schedule_published_at ? new Date(row.schedule_published_at) : null,
     lastScheduleChangeAt: row.last_schedule_change_at ? new Date(row.last_schedule_change_at) : null,
+    ticketingEnabled: row.ticketing_enabled,
+    stripeAccountId: row.stripe_account_id,
   };
 }

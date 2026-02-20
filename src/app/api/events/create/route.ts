@@ -138,6 +138,8 @@ function transformToEventInsert(
     visibility: state.basics.visibility,
     schedule_published_at: null,
     last_schedule_change_at: null,
+    ticketing_enabled: false,
+    stripe_account_id: null,
   };
 }
 
