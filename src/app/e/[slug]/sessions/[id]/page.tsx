@@ -98,7 +98,7 @@ export async function generateMetadata({ params }: SessionPageProps): Promise<Me
         },
       ] : [
         {
-          url: '/ethboulder_banner.png',
+          url: '/og-image.png',
           width: 1200,
           height: 630,
           alt: `${session.title} - ${event.name} Session`,
@@ -111,7 +111,7 @@ export async function generateMetadata({ params }: SessionPageProps): Promise<Me
       card: 'summary_large_image',
       title: session.title,
       description,
-      images: event.bannerUrl ? [event.bannerUrl] : ['/ethboulder_banner.png'],
+      images: event.bannerUrl ? [event.bannerUrl] : ['/og-image.png'],
     },
   }
 }

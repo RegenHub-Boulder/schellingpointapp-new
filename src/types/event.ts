@@ -83,6 +83,8 @@ export interface EventRow {
   created_by: string | null;
   is_featured: boolean;
   visibility: EventVisibility;
+  schedule_published_at: string | null;
+  last_schedule_change_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -116,6 +118,8 @@ export interface Event {
   faviconUrl: string | null;
   isFeatured: boolean;
   visibility: EventVisibility;
+  schedulePublishedAt: Date | null;
+  lastScheduleChangeAt: Date | null;
 }
 
 // Event member relationship
@@ -158,5 +162,7 @@ export function transformEventRow(row: EventRow): Event {
     faviconUrl: row.favicon_url,
     isFeatured: row.is_featured,
     visibility: row.visibility,
+    schedulePublishedAt: row.schedule_published_at ? new Date(row.schedule_published_at) : null,
+    lastScheduleChangeAt: row.last_schedule_change_at ? new Date(row.last_schedule_change_at) : null,
   };
 }

@@ -28,15 +28,16 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // 2. Fetch session with host profile, venue, time_slot, track
+  // 2. Fetch session with host profile, venue, time_slot, track, and event
   const { data: session, error: sessionError } = await admin
     .from('sessions')
     .select(`
-      id, title, status, host_notified_at, host_id,
+      id, title, status, host_notified_at, host_id, event_id,
       host:profiles!host_id(email, display_name),
       venue:venues(name, address),
       time_slot:time_slots(start_time, end_time, day_date, label),
-      track:tracks(name, color)
+      track:tracks(name, color),
+      event:events(id, slug, name, start_date, end_date, timezone, location_name)
     `)
     .eq('id', sessionId)
     .single()
@@ -79,6 +80,15 @@ export async function POST(
   const trackRaw = session.track as unknown
   const track = (Array.isArray(trackRaw) ? trackRaw[0] : trackRaw) as { name: string; color: string | null } | null
 
+  const eventRaw = session.event as unknown
+  const event = (Array.isArray(eventRaw) ? eventRaw[0] : eventRaw) as {
+    id: string; slug: string; name: string; start_date: string | null; end_date: string | null;
+    timezone: string | null; location_name: string | null
+  } | null
+
+  // Use event timezone or fallback to UTC
+  const eventTimezone = event?.timezone || 'UTC'
+
   const startDate = timeSlot?.start_time ? new Date(timeSlot.start_time) : null
   const endDate = timeSlot?.end_time ? new Date(timeSlot.end_time) : null
 
@@ -88,23 +98,51 @@ export async function POST(
         month: 'long',
         day: 'numeric',
         year: 'numeric',
-        timeZone: 'America/Denver',
+        timeZone: eventTimezone,
       })
     : 'TBD'
+
+  // Get timezone abbreviation
+  const tzAbbr = startDate
+    ? startDate.toLocaleTimeString('en-US', { timeZone: eventTimezone, timeZoneName: 'short' }).split(' ').pop()
+    : ''
 
   const timeString = startDate && endDate
     ? `${startDate.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        timeZone: 'America/Denver',
+        timeZone: eventTimezone,
       })} – ${endDate.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        timeZone: 'America/Denver',
-      })} MST`
+        timeZone: eventTimezone,
+      })}${tzAbbr ? ` ${tzAbbr}` : ''}`
     : 'TBD'
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.ethboulder.xyz'
+  // Build event date range (e.g., "February 13-15, 2026")
+  let eventDateRange: string | undefined
+  if (event?.start_date && event?.end_date) {
+    const eventStart = new Date(event.start_date)
+    const eventEnd = new Date(event.end_date)
+    const startMonth = eventStart.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+    const endMonth = eventEnd.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+    const startDay = eventStart.getUTCDate()
+    const endDay = eventEnd.getUTCDate()
+    const year = eventStart.getUTCFullYear()
+
+    if (startMonth === endMonth) {
+      eventDateRange = `${startMonth} ${startDay}-${endDay}, ${year}`
+    } else {
+      eventDateRange = `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`
+    }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://schellingpoint.city'
+
+  // Build session URL using event slug
+  const sessionUrl = event?.slug
+    ? `${appUrl}/e/${event.slug}/sessions/${session.id}`
+    : `${appUrl}/sessions/${session.id}` // Fallback for legacy sessions
 
   const { subject, html } = buildSessionScheduledEmail({
     sessionTitle: session.title,
@@ -115,13 +153,21 @@ export async function POST(
     timeString,
     trackName: track?.name || null,
     trackColor: track?.color || null,
-    sessionUrl: `${appUrl}/sessions/${session.id}`,
+    sessionUrl,
+    eventName: event?.name || 'Schelling Point',
+    eventDateRange,
+    eventLocation: event?.location_name || undefined,
   })
 
   // 7. Send via Resend
+  // Note: For production, you'd want event-specific from addresses
+  // For now, use a generic Schelling Point address with event name in display name
+  const fromName = event?.name || 'Schelling Point'
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'hello@schellingpoint.city'
+
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: sendError } = await resend.emails.send({
-    from: 'EthBoulder <hello@ethboulder.xyz>',
+    from: `${fromName} <${fromEmail}>`,
     to: host.email,
     subject,
     html,

@@ -24,7 +24,7 @@ function LoginContent() {
   React.useEffect(() => {
     if (user && !authLoading) {
       const redirect = searchParams.get('redirect')
-      router.push(redirect || '/dashboard')
+      router.push(redirect || '/')
     }
   }, [user, authLoading, router, searchParams])
 

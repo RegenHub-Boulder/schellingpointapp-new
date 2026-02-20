@@ -1,29 +1,20 @@
 'use client'
 
 import * as React from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  ArrowLeft,
-  Loader2,
-  Check,
-  X,
-  Calendar,
-  MapPin,
-  Clock,
-  ChevronDown,
-  Settings,
-  LayoutGrid,
-  Trash2,
-  Mail,
-  MailCheck,
-} from 'lucide-react'
+import { Loader2, Mail, LayoutGrid, Plus, Table, Grid3X3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
+import { AdminNav } from '@/components/admin/AdminNav'
+import { AdminStats } from '@/components/admin/AdminStats'
+import { SessionCard } from '@/components/admin/SessionCard'
+import { SessionTable, Session } from '@/components/admin/SessionTable'
+import { SessionFilters, defaultFilters } from '@/components/admin/SessionFilters'
+import { BatchActions } from '@/components/admin/BatchActions'
+import Link from 'next/link'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -43,23 +34,14 @@ function getAccessToken(): string | null {
 }
 
 type SessionStatus = 'pending' | 'approved' | 'rejected' | 'scheduled'
+type SortField = 'votes' | 'title' | 'duration' | 'created_at'
+type SortDirection = 'asc' | 'desc'
+type ViewMode = 'table' | 'cards'
 
-interface Session {
+interface Track {
   id: string
-  title: string
-  description: string | null
-  format: string
-  duration: number
-  host_name: string | null
-  topic_tags: string[] | null
-  total_votes: number
-  status: SessionStatus
-  time_preferences: string[] | null
-  venue_id: string | null
-  time_slot_id: string | null
-  host_notified_at: string | null
-  venue?: { id: string; name: string } | null
-  time_slot?: { id: string; label: string; start_time: string } | null
+  name: string
+  color: string
 }
 
 interface Venue {
@@ -84,8 +66,21 @@ export default function AdminPage() {
   const [sessions, setSessions] = React.useState<Session[]>([])
   const [venues, setVenues] = React.useState<Venue[]>([])
   const [timeSlots, setTimeSlots] = React.useState<TimeSlot[]>([])
+  const [tracks, setTracks] = React.useState<Track[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [activeTab, setActiveTab] = React.useState<'pending' | 'approved' | 'scheduled'>('pending')
+  const [activeTab, setActiveTab] = React.useState<'all' | 'pending' | 'approved' | 'scheduled'>('pending')
+  const [viewMode, setViewMode] = React.useState<ViewMode>('table')
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
+  const [isBatchLoading, setIsBatchLoading] = React.useState(false)
+
+  // Filter state
+  const [filters, setFilters] = React.useState(defaultFilters)
+
+  // Sort state
+  const [sortField, setSortField] = React.useState<SortField>('votes')
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc')
 
   // Redirect if not admin
   React.useEffect(() => {
@@ -101,9 +96,9 @@ export default function AdminPage() {
       const authHeader = token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`
 
       try {
-        const [sessionsRes, venuesRes, timeSlotsRes] = await Promise.all([
+        const [sessionsRes, venuesRes, timeSlotsRes, tracksRes] = await Promise.all([
           fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=*,venue:venues(id,name),time_slot:time_slots(id,label,start_time)&order=total_votes.desc`,
+            `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=*,venue:venues(id,name),time_slot:time_slots(id,label,start_time),track:tracks(id,name,color)&order=total_votes.desc`,
             {
               headers: {
                 'apikey': SUPABASE_KEY,
@@ -129,6 +124,15 @@ export default function AdminPage() {
               },
             }
           ),
+          fetch(
+            `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&select=*&order=name`,
+            {
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': authHeader,
+              },
+            }
+          ),
         ])
 
         if (sessionsRes.ok) {
@@ -143,6 +147,10 @@ export default function AdminPage() {
           const data = await timeSlotsRes.json()
           setTimeSlots(data)
         }
+        if (tracksRes.ok) {
+          const data = await tracksRes.json()
+          setTracks(data)
+        }
       } catch (err) {
         console.error('Error fetching admin data:', err)
       } finally {
@@ -153,6 +161,161 @@ export default function AdminPage() {
     fetchData()
   }, [event.id])
 
+  // Clear selection when tab changes
+  React.useEffect(() => {
+    setSelectedIds(new Set())
+  }, [activeTab])
+
+  // Filter and sort sessions
+  const filteredSessions = React.useMemo(() => {
+    let result = [...sessions]
+
+    // Tab filter
+    if (activeTab !== 'all') {
+      result = result.filter((s) => s.status === activeTab)
+    }
+
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      result = result.filter((s) =>
+        s.title.toLowerCase().includes(searchLower) ||
+        s.host_name?.toLowerCase().includes(searchLower) ||
+        s.topic_tags?.some((t) => t.toLowerCase().includes(searchLower))
+      )
+    }
+
+    // Status filter (when on 'all' tab)
+    if (filters.statuses.length > 0 && activeTab === 'all') {
+      result = result.filter((s) => filters.statuses.includes(s.status))
+    }
+
+    // Track filter
+    if (filters.tracks.length > 0) {
+      result = result.filter((s) => s.track_id && filters.tracks.includes(s.track_id))
+    }
+
+    // Format filter
+    if (filters.formats.length > 0) {
+      result = result.filter((s) => filters.formats.includes(s.format))
+    }
+
+    // Vote range filter
+    if (filters.minVotes !== null) {
+      result = result.filter((s) => s.total_votes >= filters.minVotes!)
+    }
+    if (filters.maxVotes !== null) {
+      result = result.filter((s) => s.total_votes <= filters.maxVotes!)
+    }
+
+    // Has time preference
+    if (filters.hasTimePreference === true) {
+      result = result.filter((s) => s.time_preferences && s.time_preferences.length > 0)
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0
+      switch (sortField) {
+        case 'votes':
+          comparison = a.total_votes - b.total_votes
+          break
+        case 'title':
+          comparison = a.title.localeCompare(b.title)
+          break
+        case 'duration':
+          comparison = a.duration - b.duration
+          break
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          break
+      }
+      return sortDirection === 'desc' ? -comparison : comparison
+    })
+
+    return result
+  }, [sessions, activeTab, filters, sortField, sortDirection])
+
+  // Get unique formats from sessions
+  const uniqueFormats = React.useMemo(() => {
+    return Array.from(new Set(sessions.map((s) => s.format)))
+  }, [sessions])
+
+  const handleSortChange = (field: SortField) => {
+    if (field === sortField) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
+  // Batch operations
+  const executeBatchAction = async (
+    action: 'approve' | 'reject' | 'assign_track' | 'delete',
+    extra?: { reason?: string; track_id?: string | null }
+  ) => {
+    const token = getAccessToken()
+    if (!token) return
+
+    setIsBatchLoading(true)
+
+    try {
+      const response = await fetch(`/api/v1/events/${event.slug}/sessions/batch`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action,
+          session_ids: Array.from(selectedIds),
+          ...extra,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        alert(data.error || 'Batch operation failed')
+        return
+      }
+
+      // Update local state based on action
+      if (action === 'approve') {
+        setSessions((prev) =>
+          prev.map((s) =>
+            selectedIds.has(s.id) ? { ...s, status: 'approved' as SessionStatus } : s
+          )
+        )
+      } else if (action === 'reject') {
+        setSessions((prev) =>
+          prev.map((s) =>
+            selectedIds.has(s.id) ? { ...s, status: 'rejected' as SessionStatus } : s
+          )
+        )
+      } else if (action === 'assign_track') {
+        const track = tracks.find((t) => t.id === extra?.track_id) || null
+        setSessions((prev) =>
+          prev.map((s) =>
+            selectedIds.has(s.id)
+              ? { ...s, track_id: extra?.track_id || null, track }
+              : s
+          )
+        )
+      } else if (action === 'delete') {
+        setSessions((prev) => prev.filter((s) => !selectedIds.has(s.id)))
+      }
+
+      setSelectedIds(new Set())
+    } catch (err) {
+      console.error('Batch operation error:', err)
+      alert('An error occurred')
+    } finally {
+      setIsBatchLoading(false)
+    }
+  }
+
+  // Single session operations (for card view)
   const handleApprove = async (sessionId: string) => {
     const token = getAccessToken()
     if (!token) return
@@ -247,15 +410,10 @@ export default function AdminPage() {
         )
       )
 
-      // Fire-and-forget: notify host via email
+      // Notify host
       fetch(`/api/sessions/${sessionId}/notify-host`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-      }).then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          console.error('Notify host failed:', res.status, data)
-        }
       }).catch((err) => console.error('Notify host error:', err))
     } catch (err) {
       console.error('Error scheduling session:', err)
@@ -385,12 +543,6 @@ export default function AdminPage() {
               )
             )
           }
-        } else {
-          const data = await res.json().catch(() => ({}))
-          // Skip sessions with no host silently (curated/speaker sessions)
-          if (!data.skippable) {
-            console.error(`Notify failed for ${session.title}:`, res.status, data)
-          }
         }
       } catch (err) {
         console.error(`Notify error for ${session.title}:`, err)
@@ -398,12 +550,27 @@ export default function AdminPage() {
     }
 
     setIsBulkNotifying(false)
-    alert(`Sent ${sentCount} notification(s). Sessions without linked host profiles were skipped.`)
+    alert(`Sent ${sentCount} notification(s).`)
   }
 
   const pendingSessions = sessions.filter((s) => s.status === 'pending')
   const approvedSessions = sessions.filter((s) => s.status === 'approved')
   const scheduledSessions = sessions.filter((s) => s.status === 'scheduled')
+  const rejectedSessions = sessions.filter((s) => s.status === 'rejected')
+
+  // Determine allowed batch actions based on current tab
+  const getAllowedBatchActions = (): ('approve' | 'reject' | 'assign_track' | 'delete')[] => {
+    switch (activeTab) {
+      case 'pending':
+        return ['approve', 'reject', 'assign_track', 'delete']
+      case 'approved':
+        return ['reject', 'assign_track', 'delete']
+      case 'scheduled':
+        return ['assign_track', 'delete']
+      default:
+        return ['approve', 'reject', 'assign_track', 'delete']
+    }
+  }
 
   if (authLoading || roleLoading || isLoading) {
     return (
@@ -419,591 +586,201 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/e/${event.slug}/sessions`}
-                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Link>
-              <h1 className="font-bold text-lg">Admin Dashboard</h1>
-            </div>
-            <div className="flex gap-2">
-              {can('manageSchedule') && (
-                <Button asChild size="sm" className="flex-1 sm:flex-none">
-                  <Link href={`/e/${event.slug}/admin/schedule`}>
-                    <LayoutGrid className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Schedule Builder</span>
-                    <span className="sm:hidden">Schedule</span>
-                  </Link>
-                </Button>
-              )}
-              {can('manageVenues') && (
-                <Button variant="outline" asChild size="sm" className="flex-1 sm:flex-none">
-                  <Link href={`/e/${event.slug}/admin/setup`}>
-                    <Settings className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Event Setup</span>
-                    <span className="sm:hidden">Setup</span>
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <AdminNav
+        eventSlug={event.slug}
+        canManageSchedule={can('manageSchedule')}
+        canManageVenues={can('manageVenues')}
+      />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6">
         <div className="space-y-6">
-          {/* Tabs */}
-          <div className="flex gap-1 sm:gap-2 border-b overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={cn(
-                'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
-                activeTab === 'pending'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Pending ({pendingSessions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('approved')}
-              className={cn(
-                'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
-                activeTab === 'approved'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Approved ({approvedSessions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('scheduled')}
-              className={cn(
-                'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
-                activeTab === 'scheduled'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Scheduled ({scheduledSessions.length})
-            </button>
+          {/* Page Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Sessions</h1>
+              <p className="text-muted-foreground">Manage proposals and scheduled sessions</p>
+            </div>
+            <Button asChild>
+              <Link href={`/e/${event.slug}/admin/sessions/new`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Session
+              </Link>
+            </Button>
           </div>
 
-          {/* Pending Sessions */}
-          {activeTab === 'pending' && (
-            <div className="space-y-4">
-              {pendingSessions.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    No pending sessions to review.
-                  </CardContent>
-                </Card>
-              ) : (
-                pendingSessions.map((session) => (
-                  <SessionAdminCard
-                    key={session.id}
-                    session={session}
-                    onApprove={() => handleApprove(session.id)}
-                    onReject={() => handleReject(session.id)}
-                    onDelete={() => handleDelete(session.id)}
-                  />
-                ))
-              )}
-            </div>
-          )}
+          {/* Stats Overview */}
+          <AdminStats
+            pending={pendingSessions.length}
+            approved={approvedSessions.length}
+            scheduled={scheduledSessions.length}
+            rejected={rejectedSessions.length}
+            venues={venues.length}
+            timeSlots={timeSlots.length}
+          />
 
-          {/* Approved Sessions */}
-          {activeTab === 'approved' && (
-            <div className="space-y-4">
-              {approvedSessions.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    No approved sessions ready for scheduling.
-                  </CardContent>
-                </Card>
-              ) : (
-                approvedSessions.map((session) => (
-                  <SessionScheduleCard
-                    key={session.id}
-                    session={session}
-                    venues={venues}
-                    timeSlots={timeSlots}
-                    onSchedule={(venueId, timeSlotId) =>
-                      handleSchedule(session.id, venueId, timeSlotId)
-                    }
-                    onDelete={() => handleDelete(session.id)}
-                  />
-                ))
-              )}
-            </div>
-          )}
-
-          {/* Scheduled Sessions */}
-          {activeTab === 'scheduled' && (
-            <div className="space-y-4">
-              {scheduledSessions.length > 0 && scheduledSessions.some((s) => !s.host_notified_at) && (
-                <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                    {scheduledSessions.filter((s) => !s.host_notified_at).length} scheduled session(s) have not been notified.
+          {/* Quick Actions */}
+          {approvedSessions.length > 0 && can('manageSchedule') && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">
+                    {approvedSessions.length} session{approvedSessions.length > 1 ? 's' : ''} ready to schedule
                   </p>
-                  <Button
-                    size="sm"
-                    onClick={handleNotifyAllHosts}
-                    disabled={isBulkNotifying}
-                  >
-                    {isBulkNotifying ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="h-4 w-4 mr-1" />
-                        Notify All Hosts
-                      </>
-                    )}
-                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Use Schedule Builder for drag-and-drop scheduling
+                  </p>
                 </div>
-              )}
-              {scheduledSessions.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    No sessions have been scheduled yet.
-                  </CardContent>
-                </Card>
-              ) : (
-                scheduledSessions.map((session) => (
-                  <ScheduledSessionCard
-                    key={session.id}
-                    session={session}
-                    onUnschedule={() => handleUnschedule(session.id)}
-                    onDelete={() => handleDelete(session.id)}
-                    onNotify={() => handleNotifyHost(session.id)}
-                  />
-                ))
-              )}
+                <Button asChild>
+                  <Link href={`/e/${event.slug}/admin/schedule`}>
+                    <LayoutGrid className="h-4 w-4 mr-2" />
+                    Open Schedule Builder
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tabs and View Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex gap-1 sm:gap-2 border-b overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:border-b-0">
+              {(['all', 'pending', 'approved', 'scheduled'] as const).map((tab) => {
+                const count = tab === 'all' ? sessions.length :
+                  tab === 'pending' ? pendingSessions.length :
+                  tab === 'approved' ? approvedSessions.length :
+                  scheduledSessions.length
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      'px-3 sm:px-4 py-2 text-sm font-medium border-b-2 sm:border-b-0 sm:rounded-md -mb-px sm:mb-0 transition-colors whitespace-nowrap capitalize',
+                      activeTab === tab
+                        ? 'border-primary text-primary sm:bg-primary/10'
+                        : 'border-transparent text-muted-foreground hover:text-foreground sm:hover:bg-muted'
+                    )}
+                  >
+                    {tab} ({count})
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex border rounded-md">
+                <Button
+                  variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                  className="rounded-r-none"
+                >
+                  <Table className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('cards')}
+                  className="rounded-l-none"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <SessionFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            tracks={tracks}
+            formats={uniqueFormats}
+            totalCount={
+              activeTab === 'all' ? sessions.length :
+              activeTab === 'pending' ? pendingSessions.length :
+              activeTab === 'approved' ? approvedSessions.length :
+              scheduledSessions.length
+            }
+            filteredCount={filteredSessions.length}
+          />
+
+          {/* Notify All Banner (for scheduled tab) */}
+          {activeTab === 'scheduled' && scheduledSessions.some((s) => !s.host_notified_at) && (
+            <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                {scheduledSessions.filter((s) => !s.host_notified_at).length} scheduled session(s) have not been notified.
+              </p>
+              <Button
+                size="sm"
+                onClick={handleNotifyAllHosts}
+                disabled={isBulkNotifying}
+              >
+                {isBulkNotifying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-1" />
+                    Notify All Hosts
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Sessions List/Table */}
+          {filteredSessions.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                {filters.search || Object.values(filters).some((v) => v && (Array.isArray(v) ? v.length > 0 : true))
+                  ? 'No sessions match your filters.'
+                  : `No ${activeTab === 'all' ? '' : activeTab} sessions yet.`}
+              </CardContent>
+            </Card>
+          ) : viewMode === 'table' ? (
+            <SessionTable
+              sessions={filteredSessions}
+              eventSlug={event.slug}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
+            />
+          ) : (
+            <div className="space-y-3">
+              {filteredSessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  eventSlug={event.slug}
+                  venues={venues}
+                  timeSlots={timeSlots}
+                  onApprove={session.status === 'pending' ? () => handleApprove(session.id) : undefined}
+                  onReject={session.status === 'pending' ? () => handleReject(session.id) : undefined}
+                  onSchedule={session.status === 'approved' ? (v, t) => handleSchedule(session.id, v, t) : undefined}
+                  onUnschedule={session.status === 'scheduled' ? () => handleUnschedule(session.id) : undefined}
+                  onDelete={() => handleDelete(session.id)}
+                  onNotify={session.status === 'scheduled' && !session.host_notified_at ? () => handleNotifyHost(session.id) : undefined}
+                />
+              ))}
             </div>
           )}
         </div>
       </main>
+
+      {/* Batch Actions Toolbar */}
+      <BatchActions
+        selectedCount={selectedIds.size}
+        tracks={tracks}
+        onApprove={getAllowedBatchActions().includes('approve') ? () => executeBatchAction('approve') : undefined}
+        onReject={getAllowedBatchActions().includes('reject') ? (reason) => executeBatchAction('reject', { reason }) : undefined}
+        onAssignTrack={getAllowedBatchActions().includes('assign_track') ? (trackId) => executeBatchAction('assign_track', { track_id: trackId || null }) : undefined}
+        onDelete={getAllowedBatchActions().includes('delete') ? () => executeBatchAction('delete') : undefined}
+        onClearSelection={() => setSelectedIds(new Set())}
+        isLoading={isBatchLoading}
+        allowedActions={getAllowedBatchActions()}
+      />
     </div>
-  )
-}
-
-// Pending session card with approve/reject
-function SessionAdminCard({
-  session,
-  onApprove,
-  onReject,
-  onDelete,
-}: {
-  session: Session
-  onApprove: () => void
-  onReject: () => void
-  onDelete: () => void
-}) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
-
-  return (
-    <Card>
-      <CardContent className="p-4 sm:p-5">
-        <div className="space-y-3">
-          <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="capitalize">
-                {session.format}
-              </Badge>
-              <span className="text-sm text-muted-foreground">{session.duration} min</span>
-            </div>
-            <h3 className="font-semibold">{session.title}</h3>
-            {session.host_name && (
-              <p className="text-sm text-muted-foreground">by {session.host_name}</p>
-            )}
-            {session.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">{session.description}</p>
-            )}
-            {session.topic_tags && session.topic_tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {session.topic_tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {session.time_preferences && session.time_preferences.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-xs text-muted-foreground">Prefers:</span>
-                {session.time_preferences.map((pref) => (
-                  <Badge key={pref} variant="outline" className="text-xs border-blue-500/50 text-blue-700 dark:text-blue-400 bg-blue-500/10">
-                    {pref.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2 pt-2 border-t flex-wrap">
-            <Button size="sm" variant="outline" onClick={onReject} className="flex-1 sm:flex-none">
-              <X className="h-4 w-4 mr-1" />
-              Reject
-            </Button>
-            <Button size="sm" onClick={onApprove} className="flex-1 sm:flex-none">
-              <Check className="h-4 w-4 mr-1" />
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 sm:ml-auto"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-
-      {/* Delete Confirmation */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="w-full max-w-sm bg-card border rounded-xl shadow-xl p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold mb-2">Delete Session?</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              "{session.title}" will be permanently deleted.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1"
-                onClick={() => {
-                  onDelete()
-                  setShowDeleteConfirm(false)
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
-// Approved session card with scheduling
-function SessionScheduleCard({
-  session,
-  venues,
-  timeSlots,
-  onSchedule,
-  onDelete,
-}: {
-  session: Session
-  venues: Venue[]
-  timeSlots: TimeSlot[]
-  onSchedule: (venueId: string, timeSlotId: string) => void
-  onDelete: () => void
-}) {
-  const [selectedVenue, setSelectedVenue] = React.useState('')
-  const [selectedTimeSlot, setSelectedTimeSlot] = React.useState('')
-  const [showScheduler, setShowScheduler] = React.useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
-
-  const handleSchedule = () => {
-    if (selectedVenue && selectedTimeSlot) {
-      onSchedule(selectedVenue, selectedTimeSlot)
-      setShowScheduler(false)
-      setSelectedVenue('')
-      setSelectedTimeSlot('')
-    }
-  }
-
-  return (
-    <Card>
-      <CardContent className="p-4 sm:p-5">
-        <div className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="secondary" className="capitalize">
-                  {session.format}
-                </Badge>
-                <span className="text-sm text-muted-foreground">{session.duration} min</span>
-                <span className="text-sm font-medium text-primary">
-                  {session.total_votes} votes
-                </span>
-              </div>
-              <h3 className="font-semibold">{session.title}</h3>
-              {session.host_name && (
-                <p className="text-sm text-muted-foreground">by {session.host_name}</p>
-              )}
-              {session.time_preferences && session.time_preferences.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1">
-                  <span className="text-xs text-muted-foreground">Prefers:</span>
-                  {session.time_preferences.map((pref) => (
-                    <Badge key={pref} variant="outline" className="text-xs border-blue-500/50 text-blue-700 dark:text-blue-400 bg-blue-500/10">
-                      {pref.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                size="sm"
-                variant={showScheduler ? 'secondary' : 'default'}
-                onClick={() => setShowScheduler(!showScheduler)}
-                className="flex-1 sm:flex-none"
-              >
-                <Calendar className="h-4 w-4 mr-1" />
-                Schedule
-                <ChevronDown
-                  className={cn('h-4 w-4 ml-1 transition-transform', showScheduler && 'rotate-180')}
-                />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {showScheduler && (
-            <div className="pt-4 border-t space-y-4">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Venue
-                  </label>
-                  <select
-                    value={selectedVenue}
-                    onChange={(e) => setSelectedVenue(e.target.value)}
-                    className="w-full rounded-md border bg-background px-3 py-2.5 text-sm min-h-[44px]"
-                  >
-                    <option value="">Select venue...</option>
-                    {venues.map((venue) => (
-                      <option key={venue.id} value={venue.id}>
-                        {venue.name} (cap: {venue.capacity})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Time Slot
-                  </label>
-                  <select
-                    value={selectedTimeSlot}
-                    onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                    className="w-full rounded-md border bg-background px-3 py-2.5 text-sm min-h-[44px]"
-                  >
-                    <option value="">Select time...</option>
-                    {timeSlots.map((slot) => (
-                      <option key={slot.id} value={slot.id}>
-                        {slot.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <Button
-                onClick={handleSchedule}
-                disabled={!selectedVenue || !selectedTimeSlot}
-                className="w-full"
-              >
-                Confirm Schedule
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardContent>
-
-      {/* Delete Confirmation */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="w-full max-w-sm bg-card border rounded-xl shadow-xl p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold mb-2">Delete Session?</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              "{session.title}" will be permanently deleted.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1"
-                onClick={() => {
-                  onDelete()
-                  setShowDeleteConfirm(false)
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
-// Scheduled session card
-function ScheduledSessionCard({
-  session,
-  onUnschedule,
-  onDelete,
-  onNotify,
-}: {
-  session: Session
-  onUnschedule: () => void
-  onDelete: () => void
-  onNotify: () => void
-}) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
-
-  return (
-    <Card>
-      <CardContent className="p-4 sm:p-5">
-        <div className="space-y-3">
-          <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="capitalize">
-                {session.format}
-              </Badge>
-              <span className="text-sm text-muted-foreground">{session.duration} min</span>
-              <span className="text-sm font-medium text-primary">{session.total_votes} votes</span>
-              {session.host_notified_at ? (
-                <Badge variant="outline" className="text-xs border-green-500/50 text-green-700 dark:text-green-400 bg-green-500/10">
-                  <MailCheck className="h-3 w-3 mr-1" />
-                  Notified
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-500/10">
-                  <Mail className="h-3 w-3 mr-1" />
-                  Not notified
-                </Badge>
-              )}
-            </div>
-            <h3 className="font-semibold">{session.title}</h3>
-            {session.host_name && (
-              <p className="text-sm text-muted-foreground">by {session.host_name}</p>
-            )}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm bg-muted/50 rounded-lg p-3">
-              {session.venue && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                  <span>{session.venue.name}</span>
-                </div>
-              )}
-              {session.time_slot && (
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-primary flex-shrink-0" />
-                  <span>{session.time_slot.label}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={onUnschedule} className="flex-1 sm:flex-none">
-              Unschedule
-            </Button>
-            {!session.host_notified_at && (
-              <Button size="sm" variant="outline" onClick={onNotify} className="flex-1 sm:flex-none">
-                <Mail className="h-4 w-4 mr-1" />
-                Send Notification
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-
-      {/* Delete Confirmation */}
-      {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div
-            className="w-full max-w-sm bg-card border rounded-xl shadow-xl p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold mb-2">Delete Session?</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              "{session.title}" will be permanently deleted.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1"
-                onClick={() => {
-                  onDelete()
-                  setShowDeleteConfirm(false)
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </Card>
   )
 }

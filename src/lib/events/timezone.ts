@@ -45,37 +45,65 @@ export function formatInEventTimezone(
  * Parse a time string in the event's timezone
  * Input: "09:00" and "2026-02-27"
  * Output: Date object in UTC that represents that time in the event timezone
+ *
+ * Example: parseTimeInTimezone("09:00", "2026-02-27", "America/Denver")
+ * Returns a Date representing 09:00 AM Mountain Time on Feb 27, 2026 (as UTC)
  */
 export function parseTimeInTimezone(
   timeStr: string,
   dateStr: string,
   timezone: string
 ): Date {
-  // Create a date string in the format the timezone-aware parser expects
+  // Create the full date-time string
   const dateTimeStr = `${dateStr}T${timeStr}:00`;
 
-  // Create a formatter that outputs in ISO format for the given timezone
-  const formatter = new Intl.DateTimeFormat('en-CA', {
+  // Strategy: Create a date using the parts from the input, then figure out
+  // the offset for the target timezone at that moment.
+
+  // Parse the date/time components directly
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+
+  // Create a date in UTC with these components
+  // This gives us a "reference point" - e.g., 09:00 on Feb 27 in UTC
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+
+  // Now we need to adjust: if it's 09:00 in Mountain Time, what is that in UTC?
+  // Mountain Time is typically UTC-7 (or UTC-6 in daylight saving)
+  // So 09:00 MT = 16:00 UTC (in winter)
+
+  // Use Intl.DateTimeFormat to get the timezone offset
+  // We format the UTC date in the target timezone and see what time it shows
+  const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
     hour12: false,
   });
 
-  // Parse the local time into a Date object
-  // This is a simplified approach - for production, consider using date-fns-tz
-  const localDate = new Date(dateTimeStr);
+  // Format the UTC reference date in the target timezone
+  const parts = formatter.formatToParts(utcDate);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
 
-  // Get the offset for this timezone at this date
-  const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const tzDate = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
-  const offset = utcDate.getTime() - tzDate.getTime();
+  const tzHours = parseInt(getPart('hour'), 10);
+  const tzMinutes = parseInt(getPart('minute'), 10);
 
-  return new Date(localDate.getTime() + offset);
+  // Calculate the offset: how many hours/minutes difference between UTC and target timezone
+  // If utcDate is 09:00 UTC and target timezone shows 02:00, offset is -7 hours
+  const tzTotalMinutes = tzHours * 60 + tzMinutes;
+  const utcTotalMinutes = hours * 60 + minutes;
+  let offsetMinutes = tzTotalMinutes - utcTotalMinutes;
+
+  // Handle day boundary crossings
+  if (offsetMinutes > 12 * 60) offsetMinutes -= 24 * 60;
+  if (offsetMinutes < -12 * 60) offsetMinutes += 24 * 60;
+
+  // Adjust: we want input time to BE in the target timezone
+  // So we subtract the offset to get UTC time
+  return new Date(utcDate.getTime() - offsetMinutes * 60 * 1000);
 }
 
 /**

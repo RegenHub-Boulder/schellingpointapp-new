@@ -102,8 +102,8 @@ const introSlides = [
     iconColor: 'text-amber-500',
     iconBg: 'bg-amber-500/10',
     title: 'Knowledge Commons',
-    description: 'EthBoulder is building a shared knowledge graph powered by bonfires.ai. Sessions may be recorded to share with the community — hosts must ask for verbal consent from all participants before recording. It\'s completely fine if a group decides not to record, and no one should feel pressured to consent.',
-    tip: 'Be aware of active consent at all times. Chat with @ethboulder_bot on Telegram to contribute!',
+    description: 'Events may choose to record sessions to share with the community. Hosts must ask for verbal consent from all participants before recording. It\'s completely fine if a group decides not to record, and no one should feel pressured to consent.',
+    tip: 'Be aware of active consent at all times. Check with event organizers for recording policies.',
   },
 ]
 

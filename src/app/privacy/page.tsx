@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">Overview</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Schelling Point ("we", "our", or "us") is a session coordination platform for EthBoulder, operated by RegenHub.
+              Schelling Point ("we", "our", or "us") is a session coordination platform for unconferences, hackathons, and community events.
               This Privacy Policy explains how we collect, use, and protect your information when you use our service.
             </p>
           </section>
@@ -79,8 +79,8 @@ export default function PrivacyPage() {
             <p className="text-muted-foreground leading-relaxed">
               You can update or delete your profile information at any time through the Settings page.
               To request complete deletion of your account and associated data, please contact us at{' '}
-              <a href="mailto:support@ethboulder.xyz" className="text-primary hover:underline">
-                support@ethboulder.xyz
+              <a href="mailto:support@schellingpoint.xyz" className="text-primary hover:underline">
+                support@schellingpoint.xyz
               </a>.
             </p>
           </section>
@@ -105,8 +105,8 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold mb-3">Contact Us</h2>
             <p className="text-muted-foreground leading-relaxed">
               If you have questions about this Privacy Policy, please contact us at{' '}
-              <a href="mailto:support@ethboulder.xyz" className="text-primary hover:underline">
-                support@ethboulder.xyz
+              <a href="mailto:support@schellingpoint.xyz" className="text-primary hover:underline">
+                support@schellingpoint.xyz
               </a>.
             </p>
           </section>

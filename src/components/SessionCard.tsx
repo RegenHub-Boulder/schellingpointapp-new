@@ -46,6 +46,7 @@ interface SessionCardProps {
     track?: { id: string; name: string; color: string | null } | null
     cohosts?: { profile: { display_name: string | null } | null }[] | null
   }
+  eventSlug: string
   userVotes?: number
   isFavorited?: boolean
   remainingCredits: number
@@ -57,6 +58,7 @@ interface SessionCardProps {
 
 export function SessionCard({
   session,
+  eventSlug,
   userVotes = 0,
   isFavorited = false,
   remainingCredits,
@@ -87,7 +89,7 @@ export function SessionCard({
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
-            <Link href={`/sessions/${session.id}`} className="flex-1 min-w-0 cursor-pointer">
+            <Link href={`/e/${eventSlug}/sessions/${session.id}`} className="flex-1 min-w-0 cursor-pointer">
               <div className="flex items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground mb-1.5 flex-wrap">
                 <span className="flex items-center gap-1.5 whitespace-nowrap">
                   {formatIcons[session.format] || <Mic className="h-4 w-4" />}
@@ -150,7 +152,7 @@ export function SessionCard({
           </div>
 
           {/* Description */}
-          <Link href={`/sessions/${session.id}`} className="block">
+          <Link href={`/e/${eventSlug}/sessions/${session.id}`} className="block">
             {session.description && (
               <p className="text-sm text-muted-foreground line-clamp-2 hover:text-foreground/80 transition-colors">
                 {session.description}

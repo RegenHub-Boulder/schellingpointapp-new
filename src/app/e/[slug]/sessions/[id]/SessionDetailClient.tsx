@@ -1064,20 +1064,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                     Add Telegram Group
                   </Button>
                 )}
-                {/* Knowledge Graph button for host, co-host, or admin */}
-                {user && (session.host_id === user.id || session.cohosts?.some((c: any) => c.user_id === user.id) || isAdmin) && (
-                  <a
-                    href="https://t.me/ethboulder_bot"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full"
-                  >
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                      <Brain className="h-4 w-4" />
-                      Add to Knowledge Graph
-                    </Button>
-                  </a>
-                )}
+                {/* TODO: Knowledge Graph button - Make this configurable per-event when needed */}
                 {/* Delete button for session host or admin */}
                 {user && (session.host_id === user.id || isAdmin) && (
                   <Button

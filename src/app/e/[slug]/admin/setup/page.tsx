@@ -4,7 +4,6 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   Loader2,
   MapPin,
   Clock,
@@ -19,6 +18,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AdminNav } from '@/components/admin/AdminNav'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -348,25 +348,13 @@ export default function AdminSetupPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/e/${event.slug}/admin`}
-                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Admin
-              </Link>
-              <h1 className="font-bold text-lg">Event Setup</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AdminNav
+        eventSlug={event.slug}
+        canManageSchedule={can('manageSchedule')}
+        canManageVenues={can('manageVenues')}
+      />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6">
         <div className="space-y-6">
           {/* Info Card */}
           <Card className="bg-muted/30">

@@ -93,6 +93,23 @@ export async function POST(request: Request) {
     return badRequest('Title is required')
   }
 
+  if (!body.event_id || typeof body.event_id !== 'string') {
+    return badRequest('event_id is required')
+  }
+
+  const supabase = await createAdminClient()
+
+  // Check event's require_proposal_approval setting
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('require_proposal_approval')
+    .eq('id', body.event_id)
+    .single()
+
+  if (eventError || !event) {
+    return badRequest('Event not found')
+  }
+
   // Build sanitized insert object — only allow known fields
   const insert: Record<string, unknown> = { host_id: user.id }
   for (const field of ALLOWED_FIELDS) {
@@ -102,10 +119,11 @@ export async function POST(request: Request) {
   }
   // Override host_name from body (proposer provides their display name)
   if (body.host_name) insert.host_name = body.host_name
-  // Force status to pending for user-submitted proposals
-  insert.status = 'pending'
 
-  const supabase = await createAdminClient()
+  // Set status based on event's approval requirement
+  // If approval is not required, auto-approve the session
+  insert.status = event.require_proposal_approval ? 'pending' : 'approved'
+
   const { error } = await supabase.from('sessions').insert(insert)
 
   if (error) {

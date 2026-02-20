@@ -8,6 +8,10 @@ interface SessionScheduledEmailParams {
   trackName: string | null
   trackColor: string | null
   sessionUrl: string
+  // Event info for dynamic branding
+  eventName: string
+  eventDateRange?: string // e.g., "February 13-15"
+  eventLocation?: string // e.g., "Boulder, CO"
 }
 
 export function buildSessionScheduledEmail(params: SessionScheduledEmailParams) {
@@ -21,9 +25,12 @@ export function buildSessionScheduledEmail(params: SessionScheduledEmailParams) 
     trackName,
     trackColor,
     sessionUrl,
+    eventName,
+    eventDateRange,
+    eventLocation,
   } = params
 
-  const subject = `Your session "${sessionTitle}" has been scheduled! — EthBoulder 2026`
+  const subject = `Your session "${sessionTitle}" has been scheduled! — ${eventName}`
 
   const trackDot = trackName
     ? `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${trackColor || '#B2FF00'}; margin-right: 6px; vertical-align: middle;"></span>${trackName}`
@@ -210,10 +217,7 @@ export function buildSessionScheduledEmail(params: SessionScheduledEmailParams) 
                 <tr>
                   <td align="center">
                     <p style="margin: 0 0 8px 0; font-size: 13px; color: #6e7681;">
-                      <strong style="color: #8b949e;">EthBoulder 2026</strong> &nbsp;&#8226;&nbsp; February 13-15 &nbsp;&#8226;&nbsp; Boulder, CO
-                    </p>
-                    <p style="margin: 0; font-size: 12px; color: #484f58;">
-                      Where the Ethereum community comes together
+                      <strong style="color: #8b949e;">${eventName}</strong>${eventDateRange ? ` &nbsp;&#8226;&nbsp; ${eventDateRange}` : ''}${eventLocation ? ` &nbsp;&#8226;&nbsp; ${eventLocation}` : ''}
                     </p>
                   </td>
                 </tr>

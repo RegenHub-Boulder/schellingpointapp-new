@@ -574,6 +574,7 @@ export default function EventSessionsPage() {
             <SessionCard
               key={session.id}
               session={session}
+              eventSlug={event.slug}
               userVotes={userVotes[session.id] || 0}
               isFavorited={favorites.has(session.id)}
               remainingCredits={creditsRemaining}

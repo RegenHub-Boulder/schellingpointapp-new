@@ -4,10 +4,11 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/useAuth';
 
 import { useWizardStateWithPersistence } from './useWizardPersistence';
 import { WizardNavigation } from './WizardNavigation';
@@ -118,6 +119,7 @@ function ResumeDraftDialog({ timestamp, onResume, onStartFresh }: ResumeDraftDia
 
 function CreateWizardContent() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const {
     state,
     dispatch,
@@ -135,6 +137,13 @@ function CreateWizardContent() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [slugSuggestions, setSlugSuggestions] = React.useState<string[]>([]);
+
+  // Redirect to login if not authenticated
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login?redirect=/create');
+    }
+  }, [user, authLoading, router]);
 
   // Check for saved draft on mount
   React.useEffect(() => {
@@ -305,6 +314,20 @@ function CreateWizardContent() {
     }
   };
 
+  // Show loading while checking authentication
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            {authLoading ? 'Loading...' : 'Redirecting to sign in...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
@@ -342,8 +365,17 @@ function CreateWizardContent() {
             {submitError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="space-y-2">
+                <AlertDescription className="space-y-3">
                   <p>{submitError}</p>
+                  {/* Login button for auth errors */}
+                  {(submitError.includes('logged in') || submitError.includes('session has expired')) && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link href="/login?redirect=/create">
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Sign In
+                      </Link>
+                    </Button>
+                  )}
                   {slugSuggestions.length > 0 && (
                     <div className="pt-2">
                       <p className="text-sm font-medium mb-2">Try one of these available URLs:</p>

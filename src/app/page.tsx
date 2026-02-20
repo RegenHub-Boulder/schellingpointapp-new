@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Footer } from '@/components/Footer';
+import { SiteHeader } from '@/components/SiteHeader';
 import { createClient } from '@/lib/supabase/server';
 import type { EventRow } from '@/types/event';
 import { MyEventsSection } from './MyEventsSection';
@@ -325,6 +326,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <SiteHeader />
       <main className="flex-1">
         <HeroSection />
 

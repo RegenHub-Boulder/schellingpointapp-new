@@ -24,7 +24,7 @@ export default function CodeOfConductPage() {
 
       {/* Content */}
       <main className="container mx-auto px-4 py-12 max-w-3xl">
-        <h1 className="text-3xl font-bold mb-2">ETH Boulder Code of Conduct</h1>
+        <h1 className="text-3xl font-bold mb-2">Schelling Point events Code of Conduct</h1>
         <p className="text-muted-foreground mb-8">Last updated: February 2026</p>
 
         <div className="prose prose-invert prose-sm max-w-none space-y-8">
@@ -32,12 +32,12 @@ export default function CodeOfConductPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Our Pledge</h2>
             <p className="text-muted-foreground leading-relaxed">
-              ETH Boulder brings together builders, researchers, organizers, and community members who share a commitment to decentralized technology in service of local communities. We pledge to make participation in our event, online spaces, and ongoing community a harassment-free experience for everyone — regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, sexual identity, or orientation.
+              Schelling Point events brings together builders, researchers, organizers, and community members who share a commitment to decentralized technology in service of local communities. We pledge to make participation in our event, online spaces, and ongoing community a harassment-free experience for everyone — regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, sexual identity, or orientation.
             </p>
             <p className="text-muted-foreground leading-relaxed mt-3">
               Your safety and comfort are our priority. If you have questions or concerns at any point before, during, or after the event, contact us at{' '}
               <a href="mailto:kim@impactfulevents.io" className="text-primary hover:underline">kim@impactfulevents.io</a>{' '}
-              or find an EthBoulder Team member at the event information desk.
+              or find an event organizer member at the event information desk.
             </p>
           </section>
 
@@ -45,12 +45,12 @@ export default function CodeOfConductPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">2. Scope</h2>
             <p className="text-muted-foreground leading-relaxed mb-3">
-              This Code of Conduct applies across all ETH Boulder spaces, including:
+              This Code of Conduct applies across all Schelling Point events spaces, including:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2">
               <li><strong className="text-foreground">In-person events</strong> — the main conference, workshops, fireside chats, side events, and social gatherings, including setup and teardown</li>
-              <li><strong className="text-foreground">Online spaces</strong> — Telegram groups, Discord servers, forum threads, and any other digital channels operated by or affiliated with ETH Boulder</li>
-              <li><strong className="text-foreground">Public representation</strong> — when an individual is representing ETH Boulder or its community in public (e.g., posting via official social media accounts, using an official email address, or acting as a representative at external events)</li>
+              <li><strong className="text-foreground">Online spaces</strong> — Telegram groups, Discord servers, forum threads, and any other digital channels operated by or affiliated with Schelling Point events</li>
+              <li><strong className="text-foreground">Public representation</strong> — when an individual is representing Schelling Point events or its community in public (e.g., posting via official social media accounts, using an official email address, or acting as a representative at external events)</li>
             </ul>
           </section>
 
@@ -95,7 +95,7 @@ export default function CodeOfConductPage() {
               <li>Never share API keys, secret keys, or other sensitive credentials.</li>
               <li>Do not post unsolicited referral links, Discord invitations, or promotional content unless specifically requested.</li>
               <li>Do not impersonate organizers, moderators, or other community members.</li>
-              <li>No one from ETH Boulder will ever ask you to send money. Report such incidents immediately.</li>
+              <li>No one from Schelling Point events will ever ask you to send money. Report such incidents immediately.</li>
             </ul>
           </section>
 
@@ -103,7 +103,7 @@ export default function CodeOfConductPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">4. Unacceptable Behavior</h2>
             <p className="text-muted-foreground leading-relaxed mb-3">
-              The following will not be tolerated in any ETH Boulder space:
+              The following will not be tolerated in any Schelling Point events space:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2">
               <li>Harassment in any form, including sustained unwanted contact after being asked to stop</li>
@@ -128,16 +128,16 @@ export default function CodeOfConductPage() {
               If you experience or witness a violation of this Code of Conduct:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mt-2">
-              <li><strong className="text-foreground">At the event:</strong> Find an EthBoulder Team member (identifiable by a blue wristband) or go to the information desk.</li>
+              <li><strong className="text-foreground">At the event:</strong> Find an event organizer member (identifiable by a blue wristband) or go to the information desk.</li>
               <li><strong className="text-foreground">Online or after the event:</strong> Email <a href="mailto:kim@impactfulevents.io" className="text-primary hover:underline">kim@impactfulevents.io</a> with a description of the incident, the time and location (or channel), and any supporting documentation.</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-3">
-              All reports will be reviewed and investigated. The EthBoulder Team is obligated to maintain confidentiality regarding the identity of the reporter.
+              All reports will be reviewed and investigated. The event organizer is obligated to maintain confidentiality regarding the identity of the reporter.
             </p>
 
             <h3 className="text-lg font-medium mt-5 mb-2">Response: Warning &rarr; Removal</h3>
             <p className="text-muted-foreground leading-relaxed mb-3">
-              ETH Boulder uses a straightforward two-step enforcement model:
+              Schelling Point events uses a straightforward two-step enforcement model:
             </p>
             <ol className="list-decimal list-inside text-muted-foreground space-y-3">
               <li>
@@ -148,18 +148,18 @@ export default function CodeOfConductPage() {
                 <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                   <li>Expulsion from the in-person event with no refund</li>
                   <li>Removal from Telegram, Discord, or other community channels</li>
-                  <li>A ban from future ETH Boulder events and activities</li>
+                  <li>A ban from future Schelling Point events events and activities</li>
                 </ul>
               </li>
             </ol>
             <p className="text-muted-foreground leading-relaxed mt-3">
-              The duration and conditions of any ban will be determined by the severity of the violation. The EthBoulder Team reserves the right to skip the warning step for serious violations (e.g., threats, harassment, or behavior that endangers others).
+              The duration and conditions of any ban will be determined by the severity of the violation. The event organizer reserves the right to skip the warning step for serious violations (e.g., threats, harassment, or behavior that endangers others).
             </p>
 
             <h3 className="text-lg font-medium mt-5 mb-2">Appeal</h3>
             <p className="text-muted-foreground leading-relaxed">
               Individuals subject to enforcement actions may appeal by submitting additional context or evidence in writing to{' '}
-              <a href="mailto:conduct@ethboulder.xyz" className="text-primary hover:underline">conduct@ethboulder.xyz</a>{' '}
+              <a href="mailto:conduct@schellingpoint.xyz" className="text-primary hover:underline">conduct@schellingpoint.xyz</a>{' '}
               within 14 days of the action. Appeals will be reviewed by a member of the organizing team who was not involved in the original decision.
             </p>
           </section>

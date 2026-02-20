@@ -39,9 +39,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">Description of Service</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Schelling Point is a session coordination platform for EthBoulder, enabling community members to propose
-              sessions, vote using quadratic voting, and help shape the event schedule. The Service is provided by
-              RegenHub for the EthBoulder community.
+              Schelling Point is a session coordination platform for unconferences, hackathons, and community events, enabling participants to propose
+              sessions, vote using quadratic voting, and help shape event schedules. The Service enables communities
+              to collaboratively organize their events.
             </p>
           </section>
 
@@ -61,7 +61,7 @@ export default function TermsPage() {
               When using the Service, you agree to:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2">
-              <li>Submit only genuine session proposals relevant to EthBoulder themes</li>
+              <li>Submit only genuine session proposals relevant to the event themes</li>
               <li>Vote honestly and not attempt to manipulate the voting system</li>
               <li>Respect other community members and their contributions</li>
               <li>Not post offensive, discriminatory, or inappropriate content</li>
@@ -83,7 +83,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold mb-3">Content Ownership</h2>
             <p className="text-muted-foreground leading-relaxed">
               You retain ownership of content you submit (session proposals, profile information). By submitting content,
-              you grant EthBoulder and RegenHub a non-exclusive license to display and use that content in connection
+              you grant Schelling Point and event organizers a non-exclusive license to display and use that content in connection
               with the event and platform promotion.
             </p>
           </section>
@@ -101,15 +101,15 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold mb-3">Disclaimer</h2>
             <p className="text-muted-foreground leading-relaxed">
               The Service is provided "as is" without warranties of any kind. We do not guarantee that sessions will
-              be scheduled or that the platform will be available without interruption. Participation in EthBoulder
-              sessions is at your own risk.
+              be scheduled or that the platform will be available without interruption. Participation in
+              event sessions is at your own risk.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">Limitation of Liability</h2>
             <p className="text-muted-foreground leading-relaxed">
-              To the maximum extent permitted by law, RegenHub and EthBoulder shall not be liable for any indirect,
+              To the maximum extent permitted by law, Schelling Point and event organizers shall not be liable for any indirect,
               incidental, special, or consequential damages arising from your use of the Service.
             </p>
           </section>
@@ -126,8 +126,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold mb-3">Contact</h2>
             <p className="text-muted-foreground leading-relaxed">
               For questions about these Terms of Service, please contact us at{' '}
-              <a href="mailto:support@ethboulder.xyz" className="text-primary hover:underline">
-                support@ethboulder.xyz
+              <a href="mailto:support@schellingpoint.xyz" className="text-primary hover:underline">
+                support@schellingpoint.xyz
               </a>.
             </p>
           </section>

@@ -12,6 +12,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         className={cn(
           'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+          // Dark mode styling for date/time inputs - invert the calendar/clock icons
+          (type === 'date' || type === 'time' || type === 'datetime-local') &&
+            '[color-scheme:dark] dark:[color-scheme:dark]',
           error && 'border-destructive focus-visible:ring-destructive',
           className
         )}

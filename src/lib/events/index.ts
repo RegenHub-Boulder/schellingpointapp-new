@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import type { Event, EventRow, EventMember } from '@/types/event';
 import { transformEventRow } from '@/types/event';
 
@@ -10,9 +10,15 @@ export * from './templates';
 
 /**
  * Get event by slug (server-side)
+ * Uses admin client to bypass RLS - this is safe because:
+ * 1. This runs server-side only
+ * 2. Public/unlisted events should be viewable by anyone
+ * 3. Private events have their own access control in the UI layer
  */
 export async function getEventBySlug(slug: string): Promise<Event | null> {
-  const supabase = await createClient();
+  // Use admin client to ensure we can always fetch events server-side
+  // Access control for private events is handled at the UI/page level
+  const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from('events')
@@ -20,7 +26,13 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
     .eq('slug', slug)
     .single();
 
-  if (error || !data) {
+  if (error) {
+    console.error('[getEventBySlug] Error fetching event:', error.message, { slug });
+    return null;
+  }
+
+  if (!data) {
+    console.warn('[getEventBySlug] No event found for slug:', slug);
     return null;
   }
 
@@ -31,7 +43,7 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
  * Get event by ID (server-side)
  */
 export async function getEventById(id: string): Promise<Event | null> {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from('events')
@@ -39,7 +51,12 @@ export async function getEventById(id: string): Promise<Event | null> {
     .eq('id', id)
     .single();
 
-  if (error || !data) {
+  if (error) {
+    console.error('[getEventById] Error fetching event:', error.message, { id });
+    return null;
+  }
+
+  if (!data) {
     return null;
   }
 
@@ -80,7 +97,7 @@ export async function getEventMembership(
  * Get all public/unlisted events (for discovery)
  */
 export async function getPublicEvents(): Promise<Event[]> {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from('events')
@@ -88,7 +105,12 @@ export async function getPublicEvents(): Promise<Event[]> {
     .in('visibility', ['public', 'unlisted'])
     .order('start_date', { ascending: false });
 
-  if (error || !data) {
+  if (error) {
+    console.error('[getPublicEvents] Error fetching events:', error.message);
+    return [];
+  }
+
+  if (!data) {
     return [];
   }
 

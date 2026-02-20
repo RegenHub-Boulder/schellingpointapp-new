@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { uploadEventLogo, uploadEventBanner } from '@/lib/storage/upload';
 import type { WizardState, WizardAction, ThemeMode } from '../useWizardState';
 
 // ============================================================================
@@ -28,11 +29,25 @@ interface ThemePreset {
 // ============================================================================
 
 const THEME_PRESETS: ThemePreset[] = [
-  { name: 'Default', primary: '#0ea5e9', secondary: '#64748b', accent: '#f59e0b' },
-  { name: 'Forest', primary: '#22c55e', secondary: '#84cc16', accent: '#fbbf24' },
-  { name: 'Sunset', primary: '#f97316', secondary: '#ef4444', accent: '#eab308' },
-  { name: 'Ocean', primary: '#3b82f6', secondary: '#06b6d4', accent: '#8b5cf6' },
-  { name: 'Midnight', primary: '#6366f1', secondary: '#8b5cf6', accent: '#ec4899' },
+  // Modern & Clean
+  { name: 'Electric', primary: '#00D4FF', secondary: '#0099FF', accent: '#FF6B35' },
+  { name: 'Neon Mint', primary: '#00FF9F', secondary: '#00D68F', accent: '#FF2E63' },
+  { name: 'Cyber', primary: '#B2FF00', secondary: '#00FF87', accent: '#FF00E5' },
+
+  // Bold & Warm
+  { name: 'Magma', primary: '#FF5E3A', secondary: '#FF2D55', accent: '#FFD60A' },
+  { name: 'Solar', primary: '#FFCC00', secondary: '#FF9500', accent: '#34C759' },
+  { name: 'Coral', primary: '#FF6B6B', secondary: '#FF8E8E', accent: '#4ECDC4' },
+
+  // Cool & Calm
+  { name: 'Arctic', primary: '#4FC3F7', secondary: '#81D4FA', accent: '#AB47BC' },
+  { name: 'Lavender', primary: '#9B7EDE', secondary: '#B794F4', accent: '#F687B3' },
+  { name: 'Slate', primary: '#64748B', secondary: '#94A3B8', accent: '#38BDF8' },
+
+  // Nature-Inspired
+  { name: 'Aurora', primary: '#22D3EE', secondary: '#A78BFA', accent: '#34D399' },
+  { name: 'Forest', primary: '#10B981', secondary: '#059669', accent: '#F59E0B' },
+  { name: 'Ocean', primary: '#0EA5E9', secondary: '#06B6D4', accent: '#8B5CF6' },
 ];
 
 const THEME_MODES: { value: ThemeMode; label: string; description: string }[] = [
@@ -82,21 +97,47 @@ interface ImageUploadProps {
   description: string;
   aspectHint?: string;
   previewUrl: string | null;
-  onFileSelect: (file: File | null) => void;
+  onUpload: (file: File) => Promise<string | null>; // Returns URL or null on error
+  onRemove: () => void;
   accept?: string;
 }
 
-function ImageUpload({ label, description, aspectHint, previewUrl, onFileSelect, accept = 'image/*' }: ImageUploadProps) {
+function ImageUpload({ label, description, aspectHint, previewUrl, onUpload, onRemove, accept = 'image/*' }: ImageUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = React.useState<string | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Create local preview URL
-      const url = URL.createObjectURL(file);
-      setLocalPreview(url);
-      onFileSelect(file);
+    if (!file) return;
+
+    setUploadError(null);
+    setIsUploading(true);
+
+    // Create local preview URL immediately
+    const localUrl = URL.createObjectURL(file);
+    setLocalPreview(localUrl);
+
+    try {
+      const uploadedUrl = await onUpload(file);
+      if (!uploadedUrl) {
+        // Error message is set by the caller via the upload function
+        URL.revokeObjectURL(localUrl);
+        setLocalPreview(null);
+      } else {
+        // Upload succeeded, keep local preview until we switch to remote
+        URL.revokeObjectURL(localUrl);
+        setLocalPreview(null); // Clear local preview, use remote URL now
+        setUploadError(null);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+      setUploadError(errorMessage);
+      URL.revokeObjectURL(localUrl);
+      setLocalPreview(null);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -105,7 +146,8 @@ function ImageUpload({ label, description, aspectHint, previewUrl, onFileSelect,
       URL.revokeObjectURL(localPreview);
     }
     setLocalPreview(null);
-    onFileSelect(null);
+    setUploadError(null);
+    onRemove();
     if (inputRef.current) {
       inputRef.current.value = '';
     }
@@ -136,52 +178,85 @@ function ImageUpload({ label, description, aspectHint, previewUrl, onFileSelect,
             <img
               src={displayPreview}
               alt={`${label} preview`}
-              className="max-h-40 rounded-lg border object-contain"
+              className={cn(
+                "max-h-40 rounded-lg border object-contain",
+                isUploading && "opacity-50"
+              )}
             />
-            <button
-              type="button"
-              onClick={handleRemove}
-              className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
-              aria-label="Remove image"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex items-center gap-2 bg-background/90 px-3 py-2 rounded-lg shadow">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span className="text-sm">Uploading...</span>
+                </div>
+              </div>
+            )}
+            {!isUploading && (
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                aria-label="Remove image"
               >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            )}
           </div>
         ) : (
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+          <label className={cn(
+            "flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors",
+            isUploading
+              ? "cursor-wait bg-muted/50"
+              : "cursor-pointer hover:bg-accent/50"
+          )}>
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mb-2 text-muted-foreground"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" x2="12" y1="3" y2="15" />
-              </svg>
-              <p className="text-sm text-muted-foreground">
-                Click to upload or drag and drop
-              </p>
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin h-6 w-6 mb-2 text-muted-foreground" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <p className="text-sm text-muted-foreground">Uploading...</p>
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mb-2 text-muted-foreground"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" x2="12" y1="3" y2="15" />
+                  </svg>
+                  <p className="text-sm text-muted-foreground">
+                    Click to upload or drag and drop
+                  </p>
+                </>
+              )}
             </div>
             <input
               ref={inputRef}
@@ -189,10 +264,14 @@ function ImageUpload({ label, description, aspectHint, previewUrl, onFileSelect,
               className="hidden"
               accept={accept}
               onChange={handleFileChange}
+              disabled={isUploading}
             />
           </label>
         )}
       </div>
+      {uploadError && (
+        <p className="text-sm text-destructive">{uploadError}</p>
+      )}
     </div>
   );
 }
@@ -319,32 +398,48 @@ export function BrandingStep({ state, dispatch }: BrandingStepProps) {
     });
   };
 
-  // File handlers (placeholder - actual upload will happen in P2.9.3)
-  const handleLogoSelect = (_file: File | null) => {
-    // For now, just clear the URL if file is removed
-    // In P2.9.3, this will handle actual upload
-    if (!_file) {
+  // File upload handlers
+  const handleLogoUpload = React.useCallback(async (file: File): Promise<string | null> => {
+    const result = await uploadEventLogo(file);
+    if (result.success && result.url) {
       dispatch({
         type: 'UPDATE_BRANDING',
-        payload: { logoUrl: null },
+        payload: { logoUrl: result.url },
       });
+      return result.url;
     }
-    // Note: File is selected but not uploaded yet
-    // The actual upload logic will be implemented in P2.9.3
-  };
+    console.error('Logo upload failed:', result.error);
+    // Throw error so the ImageUpload component can display it
+    throw new Error(result.error || 'Upload failed');
+  }, [dispatch]);
 
-  const handleBannerSelect = (_file: File | null) => {
-    // For now, just clear the URL if file is removed
-    // In P2.9.3, this will handle actual upload
-    if (!_file) {
+  const handleLogoRemove = React.useCallback(() => {
+    dispatch({
+      type: 'UPDATE_BRANDING',
+      payload: { logoUrl: null },
+    });
+  }, [dispatch]);
+
+  const handleBannerUpload = React.useCallback(async (file: File): Promise<string | null> => {
+    const result = await uploadEventBanner(file);
+    if (result.success && result.url) {
       dispatch({
         type: 'UPDATE_BRANDING',
-        payload: { bannerUrl: null },
+        payload: { bannerUrl: result.url },
       });
+      return result.url;
     }
-    // Note: File is selected but not uploaded yet
-    // The actual upload logic will be implemented in P2.9.3
-  };
+    console.error('Banner upload failed:', result.error);
+    // Throw error so the ImageUpload component can display it
+    throw new Error(result.error || 'Upload failed');
+  }, [dispatch]);
+
+  const handleBannerRemove = React.useCallback(() => {
+    dispatch({
+      type: 'UPDATE_BRANDING',
+      payload: { bannerUrl: null },
+    });
+  }, [dispatch]);
 
   // Check if current colors match any preset
   const currentPreset = THEME_PRESETS.find((preset) =>
@@ -368,7 +463,8 @@ export function BrandingStep({ state, dispatch }: BrandingStepProps) {
             description="Your event logo, displayed in navigation and cards"
             aspectHint="Recommended: Square image (1:1 ratio)"
             previewUrl={branding.logoUrl}
-            onFileSelect={handleLogoSelect}
+            onUpload={handleLogoUpload}
+            onRemove={handleLogoRemove}
           />
 
           <ImageUpload
@@ -376,7 +472,8 @@ export function BrandingStep({ state, dispatch }: BrandingStepProps) {
             description="A banner image for your event page header"
             aspectHint="Recommended: 16:9 aspect ratio (e.g., 1920x1080)"
             previewUrl={branding.bannerUrl}
-            onFileSelect={handleBannerSelect}
+            onUpload={handleBannerUpload}
+            onRemove={handleBannerRemove}
           />
         </CardContent>
       </Card>

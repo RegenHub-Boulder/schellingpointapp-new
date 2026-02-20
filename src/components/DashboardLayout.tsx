@@ -13,10 +13,12 @@ import {
   Settings,
   LogOut,
   BarChart3,
+  Home,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CreditBar } from '@/components/CreditBar'
+import { NotificationBell } from '@/components/NotificationBell'
 import { OnboardingModal } from '@/components/auth/OnboardingModal'
 import { SettingsModal } from '@/components/SettingsModal'
 import { Footer } from '@/components/Footer'
@@ -211,11 +213,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
             <div className="flex items-center gap-4">
-              <Link href={`/e/${event.slug}/dashboard`} className="flex items-center gap-2 font-bold text-lg">
-                <img src="/logo.svg" alt="Schelling Point" className="h-8 w-8 rounded" />
+              <Link href={`/e/${event.slug}`} className="flex items-center gap-2 font-bold text-lg">
+                {event.logoUrl ? (
+                  <img src={event.logoUrl} alt={event.name} className="h-8 w-8 rounded object-contain" />
+                ) : (
+                  <div className="h-8 w-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                    {event.name.charAt(0)}
+                  </div>
+                )}
                 <div className="hidden sm:flex flex-col">
-                  <span className="font-bold text-lg leading-tight">Schelling Point</span>
-                  <span className="text-xs text-muted-foreground leading-tight font-normal">{event.name}</span>
+                  <span className="font-bold text-lg leading-tight">{event.name}</span>
+                  <span className="text-xs text-muted-foreground leading-tight font-normal">Schelling Point</span>
                 </div>
               </Link>
               {isAdmin && (
@@ -223,6 +231,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   Admin
                 </Badge>
               )}
+              <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                <Link href={`/e/${event.slug}`}>
+                  <Home className="h-4 w-4 mr-1" />
+                  Home
+                </Link>
+              </Button>
             </div>
 
             {/* User Actions */}
@@ -245,6 +259,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       </Link>
                     </Button>
                   )}
+                  <NotificationBell />
                   <button
                     onClick={() => setShowSettings(true)}
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -332,7 +347,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </main>
 
       {/* Footer */}
-      <Footer variant="minimal" className="mt-auto" />
+      <Footer variant="minimal" className="mt-auto" event={event} />
 
       {/* Onboarding Modal */}
       {showOnboarding && user && (

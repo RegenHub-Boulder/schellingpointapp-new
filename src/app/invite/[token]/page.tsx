@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: InvitePageProps): Promise<Met
 
   return {
     title: `Co-Host Invite: ${session.title} - Schelling Point`,
-    description: `You've been invited to co-host "${session.title}" at EthBoulder 2026`,
+    description: `You've been invited to co-host "${session.title}"`,
   }
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getUserFromRequest } from '@/lib/api/getUser';
 import { isValidSlugFormat, suggestAlternativeSlugs } from '@/lib/utils/slug';
+import { parseTimeInTimezone } from '@/lib/events/timezone';
 import type { WizardState, WizardVenue, WizardTrack, WizardTimeSlot } from '@/app/create/useWizardState';
 import type { EventRow, EventTheme } from '@/types/event';
 
@@ -135,6 +136,8 @@ function transformToEventInsert(
     created_by: userId,
     is_featured: false,
     visibility: state.basics.visibility,
+    schedule_published_at: null,
+    last_schedule_change_at: null,
   };
 }
 
@@ -201,7 +204,8 @@ function transformTracksToInsert(
 function transformTimeSlotsToInsert(
   timeSlots: WizardTimeSlot[],
   eventId: string,
-  venueIdMapping: VenueIdMapping
+  venueIdMapping: VenueIdMapping,
+  eventTimezone: string
 ): Array<{
   start_time: string;
   end_time: string;
@@ -213,13 +217,13 @@ function transformTimeSlotsToInsert(
   slot_type: string;
 }> {
   return timeSlots.map((slot) => {
-    // Combine day_date and times to create full timestamps
-    const startTime = `${slot.dayDate}T${slot.startTime}:00`;
-    const endTime = `${slot.dayDate}T${slot.endTime}:00`;
+    // Convert local times in event timezone to proper UTC timestamps
+    const startDate = parseTimeInTimezone(slot.startTime, slot.dayDate, eventTimezone);
+    const endDate = parseTimeInTimezone(slot.endTime, slot.dayDate, eventTimezone);
 
     return {
-      start_time: startTime,
-      end_time: endTime,
+      start_time: startDate.toISOString(),
+      end_time: endDate.toISOString(),
       label: slot.label || null,
       is_break: slot.isBreak,
       event_id: eventId,
@@ -370,7 +374,8 @@ export async function POST(request: Request): Promise<NextResponse<CreateEventRe
       const timeSlotInserts = transformTimeSlotsToInsert(
         wizardState.schedule.timeSlots,
         eventId,
-        venueIdMapping
+        venueIdMapping,
+        wizardState.dates.timezone
       );
       const { error: slotsError } = await supabase
         .from('time_slots')
