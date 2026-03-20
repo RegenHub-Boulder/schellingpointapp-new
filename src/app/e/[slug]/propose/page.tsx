@@ -14,10 +14,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { parseTimeInTimezone } from '@/lib/events/timezone'
 import { cn } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
+import { createClient } from '@/lib/supabase/client'
 const formats = [
   { value: 'talk', label: 'Talk', description: 'A presentation or lecture' },
   { value: 'workshop', label: 'Workshop', description: 'Hands-on interactive session' },
@@ -61,19 +58,6 @@ interface Track {
   color: string | null
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 // Generate event days from event start/end dates
 function getEventDays(startDate: Date, endDate: Date): { value: string; label: string }[] {
@@ -165,19 +149,16 @@ export default function ProposePage() {
   React.useEffect(() => {
     const fetchTracks = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&is_active=eq.true&select=id,name,color&order=name`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('tracks')
+          .select('id,name,color')
+          .eq('event_id', event.id)
+          .eq('is_active', true)
+          .order('name')
 
-        if (response.ok) {
-          const data = await response.json()
-          setTracks(data)
+        if (!error && data) {
+          setTracks(data as unknown as Track[])
         }
       } catch (err) {
         console.error('Error fetching tracks:', err)
@@ -223,7 +204,9 @@ export default function ProposePage() {
       return
     }
 
-    const token = getAccessToken()
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) {
       setError('Session expired. Please log in again.')
       return

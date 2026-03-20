@@ -11,8 +11,7 @@ import { TicketQR } from '@/components/TicketQR'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface TicketData {
   id: string
@@ -23,20 +22,6 @@ interface TicketData {
     name: string
     description: string | null
   }
-}
-
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
 }
 
 const STATUS_CONFIG = {
@@ -72,6 +57,7 @@ export default function TicketDetailPage() {
   const ticketId = params.ticketId as string
   const { user } = useAuth()
   const event = useEvent()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [ticket, setTicket] = React.useState<TicketData | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -85,23 +71,10 @@ export default function TicketDetailPage() {
       }
 
       try {
-        const token = getAccessToken()
-        if (!token) {
-          router.push('/login')
-          return
-        }
-
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tickets?id=eq.${ticketId}&select=id,status,created_at,checked_in_at,tier:ticket_tiers(name,description)`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
-
-        const data = await response.json()
+        const { data } = await supabase
+          .from('tickets')
+          .select('id,status,created_at,checked_in_at,tier:ticket_tiers(name,description)')
+          .eq('id', ticketId)
 
         if (data && data.length > 0) {
           setTicket({

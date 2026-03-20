@@ -25,9 +25,7 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface Participant {
   id: string
@@ -78,21 +76,15 @@ function ParticipantsContent() {
   React.useEffect(() => {
     const fetchParticipants = async () => {
       try {
-        // Fetch event members with their profiles
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/event_members?event_id=eq.${event.id}&select=id,user_id,role,profile:profiles(id,email,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('event_members')
+          .select('id,user_id,role,profile:profiles(id,email,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)')
+          .eq('event_id', event.id)
 
-        if (response.ok) {
-          const data = await response.json()
+        if (!error && data) {
           // Filter out members without profiles
-          setParticipants(data.filter((p: Participant) => p.profile))
+          setParticipants((data as unknown as Participant[]).filter((p: Participant) => p.profile))
         }
       } catch (err) {
         console.error('Error fetching participants:', err)

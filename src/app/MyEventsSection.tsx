@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { createClient } from '@/lib/supabase/client';
 
 interface MyEvent {
   id: string;
@@ -53,20 +51,6 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
 }
 
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
-  const stored = localStorage.getItem(storageKey);
-  if (stored) {
-    try {
-      const session = JSON.parse(stored);
-      return session?.access_token || null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
 
 export function MyEventsSection() {
   const { user, isLoading: authLoading } = useAuth();
@@ -80,30 +64,26 @@ export function MyEventsSection() {
         return;
       }
 
-      const token = getAccessToken();
-      if (!token) {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
         setIsLoading(false);
         return;
       }
 
       try {
         // Fetch event memberships where user is owner or admin
-        const memberResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/event_members?user_id=eq.${user.id}&role=in.(owner,admin)&select=event_id,role`,
-          {
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const { data: memberships, error: memberError } = await supabase
+          .from('event_members')
+          .select('event_id,role')
+          .eq('user_id', user.id)
+          .in('role', ['owner', 'admin']);
 
-        if (!memberResponse.ok) {
+        if (memberError) {
           setIsLoading(false);
           return;
         }
 
-        const memberships = await memberResponse.json();
         if (!memberships || memberships.length === 0) {
           setEvents([]);
           setIsLoading(false);
@@ -117,19 +97,14 @@ export function MyEventsSection() {
         });
 
         // Fetch event details
-        const eventsResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/events?id=in.(${eventIds.join(',')})&select=id,slug,name,tagline,start_date,end_date,location_name,status,logo_url&order=start_date.desc`,
-          {
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('events')
+          .select('id,slug,name,tagline,start_date,end_date,location_name,status,logo_url')
+          .in('id', eventIds)
+          .order('start_date', { ascending: false });
 
-        if (eventsResponse.ok) {
-          const eventsData = await eventsResponse.json();
-          const eventsWithRoles = eventsData.map((e: MyEvent) => ({
+        if (!eventsError && eventsData) {
+          const eventsWithRoles = (eventsData as MyEvent[]).map((e: MyEvent) => ({
             ...e,
             role: roleMap[e.id] || 'admin',
           }));

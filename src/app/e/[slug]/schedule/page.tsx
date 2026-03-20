@@ -13,9 +13,7 @@ import { ExportScheduleButton } from '@/components/AddToCalendar'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface Track {
   id: string
@@ -75,19 +73,6 @@ function getDateKey(isoString: string): string {
   return `${year}-${month}-${day}`
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 export default function SchedulePage() {
   const router = useRouter()
@@ -109,49 +94,39 @@ export default function SchedulePage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
+        const supabase = createClient()
         const [sessionsRes, timeSlotsRes, tracksRes] = await Promise.all([
-          fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&status=eq.scheduled&select=id,title,description,format,duration,host_name,is_self_hosted,custom_location,self_hosted_start_time,self_hosted_end_time,venue:venues(name),time_slot:time_slots(id,label,start_time,end_time),track:tracks(id,name,color)`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-              },
-            }
-          ),
-          fetch(
-            `${SUPABASE_URL}/rest/v1/time_slots?event_id=eq.${event.id}&select=*&order=start_time`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-              },
-            }
-          ),
-          fetch(
-            `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&is_active=eq.true&select=id,name,color&order=name`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-              },
-            }
-          ),
+          supabase
+            .from('sessions')
+            .select('id,title,description,format,duration,host_name,is_self_hosted,custom_location,self_hosted_start_time,self_hosted_end_time,venue:venues(name),time_slot:time_slots(id,label,start_time,end_time),track:tracks(id,name,color)')
+            .eq('event_id', event.id)
+            .eq('status', 'scheduled'),
+          supabase
+            .from('time_slots')
+            .select('*')
+            .eq('event_id', event.id)
+            .order('start_time'),
+          supabase
+            .from('tracks')
+            .select('id,name,color')
+            .eq('event_id', event.id)
+            .eq('is_active', true)
+            .order('name'),
         ])
 
-        if (sessionsRes.ok) {
-          setSessions(await sessionsRes.json())
+        if (!sessionsRes.error && sessionsRes.data) {
+          setSessions(sessionsRes.data as unknown as Session[])
         }
-        if (timeSlotsRes.ok) {
-          const slots = await timeSlotsRes.json()
+        if (!timeSlotsRes.error && timeSlotsRes.data) {
+          const slots = timeSlotsRes.data as unknown as TimeSlot[]
           setTimeSlots(slots)
           // Auto-select first day
           if (slots.length > 0) {
             setSelectedDay(getDateKey(slots[0].start_time))
           }
         }
-        if (tracksRes.ok) {
-          setTracks(await tracksRes.json())
+        if (!tracksRes.error && tracksRes.data) {
+          setTracks(tracksRes.data as unknown as Track[])
         }
       } catch (err) {
         console.error('Error fetching schedule:', err)
@@ -171,22 +146,15 @@ export default function SchedulePage() {
     }
 
     const fetchFavorites = async () => {
-      const token = getAccessToken()
-      if (!token) return
-
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('session_id')
+          .eq('user_id', user.id)
+          .eq('event_id', event.id)
 
-        if (response.ok) {
-          const data = await response.json()
+        if (!error && data) {
           setFavoriteIds(new Set(data.map((f: { session_id: string }) => f.session_id)))
         }
       } catch (err) {
@@ -207,12 +175,6 @@ export default function SchedulePage() {
       return
     }
 
-    const token = getAccessToken()
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
     const isFavorited = favoriteIds.has(sessionId)
 
     // Optimistic update
@@ -228,34 +190,21 @@ export default function SchedulePage() {
     setTogglingIds((prev) => new Set(prev).add(sessionId))
 
     try {
+      const supabase = createClient()
       if (isFavorited) {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
       } else {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              session_id: sessionId,
-              event_id: event.id,
-            }),
-          }
-        )
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            session_id: sessionId,
+            event_id: event.id,
+          })
       }
     } catch (err) {
       console.error('Error toggling favorite:', err)

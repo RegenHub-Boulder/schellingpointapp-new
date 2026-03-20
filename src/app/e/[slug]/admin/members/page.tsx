@@ -21,11 +21,8 @@ import { Badge } from '@/components/ui/badge'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
-import { getAccessToken } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { formatDistanceToNow } from 'date-fns'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 interface Member {
   id: string
@@ -61,6 +58,7 @@ export default function AdminMembersPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin, isOwner, isLoading: roleLoading, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [members, setMembers] = React.useState<Member[]>([])
   const [invitations, setInvitations] = React.useState<Invitation[]>([])
@@ -84,33 +82,33 @@ export default function AdminMembersPage() {
   // Fetch members and invitations
   React.useEffect(() => {
     async function fetchData() {
-      const token = getAccessToken()
-      if (!token) return
-
       try {
         // Fetch members
-        const membersRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/event_members?event_id=eq.${event.id}&select=id,user_id,role,joined_at,user_data:user_data(display_name,email)&order=role.asc,joined_at.asc`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
-        if (membersRes.ok) {
-          setMembers(await membersRes.json())
+        const { data: membersData, error: membersError } = await supabase
+          .from('event_members')
+          .select('id,user_id,role,joined_at,user_data:user_data(display_name,email)')
+          .eq('event_id', event.id)
+          .order('role', { ascending: true })
+          .order('joined_at', { ascending: true })
+
+        if (!membersError && membersData) {
+          setMembers(membersData as any)
         }
 
         // Fetch invitations
-        const invitationsRes = await fetch(`/api/v1/events/${event.slug}/invitations`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        })
-        if (invitationsRes.ok) {
-          const data = await invitationsRes.json()
-          setInvitations(data.invitations || [])
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        
+        if (token) {
+          const invitationsRes = await fetch(`/api/v1/events/${event.slug}/invitations`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          })
+          if (invitationsRes.ok) {
+            const data = await invitationsRes.json()
+            setInvitations(data.invitations || [])
+          }
         }
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -123,7 +121,8 @@ export default function AdminMembersPage() {
   }, [event.id, event.slug])
 
   const handleCreateInvite = async () => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     setInviting(true)
@@ -174,7 +173,8 @@ export default function AdminMembersPage() {
   }
 
   const handleRevokeInvite = async (id: string) => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     if (!confirm('Revoke this invitation?')) return

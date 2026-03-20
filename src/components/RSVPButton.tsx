@@ -7,10 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
-import { getAccessToken } from '@/lib/supabase/client'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface RSVPButtonProps {
   sessionId: string
@@ -77,8 +74,9 @@ export function RSVPButton({
       return
     }
 
-    const token = getAccessToken()
-    if (!token) {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
       router.push('/login')
       return
     }
@@ -88,18 +86,13 @@ export function RSVPButton({
     try {
       if (status) {
         // Cancel RSVP
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/session_rsvps?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { error } = await supabase
+          .from('session_rsvps')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
 
-        if (response.ok) {
+        if (!error) {
           // Optimistic update
           if (status === 'confirmed') {
             setLocalRsvpCount(prev => Math.max(0, prev - 1))
@@ -117,27 +110,17 @@ export function RSVPButton({
         const newStatus = hasRoom ? 'confirmed' : 'waitlist'
         const newWaitlistPosition = hasRoom ? null : localWaitlistCount + 1
 
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/session_rsvps`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify({
-              event_id: event.id,
-              session_id: sessionId,
-              user_id: user.id,
-              status: newStatus,
-              waitlist_position: newWaitlistPosition,
-            }),
-          }
-        )
+        const { error } = await supabase
+          .from('session_rsvps')
+          .insert({
+            event_id: event.id,
+            session_id: sessionId,
+            user_id: user.id,
+            status: newStatus,
+            waitlist_position: newWaitlistPosition,
+          })
 
-        if (response.ok) {
+        if (!error) {
           // Optimistic update
           if (newStatus === 'confirmed') {
             setLocalRsvpCount(prev => prev + 1)

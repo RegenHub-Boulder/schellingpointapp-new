@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Upload, FileText, AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 interface CSVSessionImportProps {
@@ -36,20 +37,7 @@ const EXAMPLE_CSV = `title,description,host_name,format,duration,track
 "Building DApps Workshop","Hands-on workshop for building decentralized apps","Bob Johnson","workshop",90,"Technical"
 "Community Governance Discussion","Open discussion about DAO governance","Carol Williams","discussion",60,"Governance"`
 
-function getAccessToken(): string | null {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+
 
 function parseCSV(csvText: string): string[][] {
   const rows: string[][] = []
@@ -194,11 +182,13 @@ export function CSVSessionImport({ eventSlug, tracks, onImportComplete }: CSVSes
     const validRows = parsedRows.filter(r => r.errors.length === 0)
     if (validRows.length === 0) return
 
-    const token = getAccessToken()
-    if (!token) {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
       setParseError('Session expired. Please log in again.')
       return
     }
+    const token = session.access_token
 
     setIsImporting(true)
     const results: ImportResult[] = []

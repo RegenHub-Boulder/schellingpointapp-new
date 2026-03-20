@@ -10,8 +10,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { formatPrice } from '@/lib/payments/stripe'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface TicketTier {
   id: string
@@ -35,24 +34,11 @@ interface UserTicket {
   status: string
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 export default function TicketsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const event = useEvent()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [tiers, setTiers] = React.useState<TicketTier[]>([])
   const [userTickets, setUserTickets] = React.useState<UserTicket[]>([])
@@ -65,32 +51,25 @@ export default function TicketsPage() {
     async function fetchData() {
       try {
         // Fetch active tiers
-        const tiersRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/ticket_tiers?event_id=eq.${event.id}&is_active=eq.true&order=display_order.asc`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-            },
-          }
-        )
-        const tiersData = await tiersRes.json()
+        const { data: tiersData } = await supabase
+          .from('ticket_tiers')
+          .select('*')
+          .eq('event_id', event.id)
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
         setTiers(tiersData || [])
 
         // Fetch user's tickets if logged in
         if (user) {
-          const token = getAccessToken()
-          if (token) {
-            const ticketsRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/tickets?event_id=eq.${event.id}&user_id=eq.${user.id}&status=neq.cancelled`,
-              {
-                headers: {
-                  'apikey': SUPABASE_KEY,
-                  'Authorization': `Bearer ${token}`,
-                },
-              }
-            )
-            const ticketsData = await ticketsRes.json()
-            setUserTickets(ticketsData || [])
+          const { data: ticketsData } = await supabase
+            .from('tickets')
+            .select('*')
+            .eq('event_id', event.id)
+            .eq('user_id', user.id)
+            .neq('status', 'cancelled')
+          
+          if (ticketsData) {
+            setUserTickets(ticketsData)
           }
         }
       } catch (err) {
@@ -114,7 +93,8 @@ export default function TicketsPage() {
     setError(null)
 
     try {
-      const token = getAccessToken()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       if (!token) {
         router.push('/login')
         return

@@ -11,23 +11,7 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { votesToCredits, nextVoteCost } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+import { createClient } from '@/lib/supabase/client'
 
 interface Vote {
   session_id: string
@@ -46,6 +30,7 @@ export default function MyVotesPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { voteCredits } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Use event's vote credits
   const totalCredits = voteCredits
@@ -62,23 +47,15 @@ export default function MyVotesPage() {
   const fetchVotes = React.useCallback(async () => {
     if (!user) return
 
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,vote_count,credits_spent,session:sessions(id,title,format,host_name)`,
-        {
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      const { data, error } = await supabase
+        .from('votes')
+        .select('session_id,vote_count,credits_spent,session:sessions(id,title,format,host_name)')
+        .eq('user_id', user.id)
+        .eq('event_id', event.id)
 
-      if (response.ok) {
-        const data = await response.json()
-        setVotes(data.filter((v: Vote) => v.session))
+      if (!error && data) {
+        setVotes(data.filter((v: any) => v.session))
       }
     } catch (err) {
       console.error('Error fetching votes:', err)
@@ -97,9 +74,6 @@ export default function MyVotesPage() {
 
   const handleVote = async (sessionId: string, currentVotes: number, delta: number) => {
     if (!user) return
-
-    const token = getAccessToken()
-    if (!token) return
 
     const newVoteCount = Math.max(0, currentVotes + delta)
     const newCredits = votesToCredits(newVoteCount)
@@ -123,36 +97,21 @@ export default function MyVotesPage() {
 
     try {
       if (newVoteCount === 0) {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        await supabase
+          .from('votes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
       } else {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?on_conflict=user_id,session_id`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'resolution=merge-duplicates',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              session_id: sessionId,
-              event_id: event.id,
-              vote_count: newVoteCount,
-              credits_spent: newCredits,
-            }),
-          }
-        )
+        await supabase
+          .from('votes')
+          .upsert({
+            user_id: user.id,
+            session_id: sessionId,
+            event_id: event.id,
+            vote_count: newVoteCount,
+            credits_spent: newCredits,
+          }, { onConflict: 'user_id,session_id' })
       }
     } catch (err) {
       console.error('Error updating vote:', err)

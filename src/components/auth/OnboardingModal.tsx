@@ -25,9 +25,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface OnboardingModalProps {
   userId: string
@@ -52,19 +50,6 @@ const DEFAULT_INTERESTS = [
   'Developer Tools',
 ]
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 // Intro slides explaining the app
 const introSlides = [
@@ -164,7 +149,9 @@ export function OnboardingModal({ userId, email, onComplete, suggestedTopics }: 
     setIsSubmitting(true)
     setError(null)
 
-    const token = getAccessToken()
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) {
       setError('Session expired. Please refresh and try again.')
       setIsSubmitting(false)
@@ -192,39 +179,28 @@ export function OnboardingModal({ userId, email, onComplete, suggestedTopics }: 
 
     try {
       // First try with all fields
-      let response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify(fullProfileData),
-      })
+      let { error: updateError } = await supabase
+        .from('profiles')
+        .update(fullProfileData)
+        .eq('id', userId)
 
-      // If 400 error (likely missing columns), retry with minimal fields
-      if (response.status === 400) {
-        console.log('Full update failed (400), retrying with minimal fields...')
-        response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify(minimalProfileData),
-        })
+      // If error (likely missing columns), retry with minimal fields
+      if (updateError) {
+        console.log('Full update failed, retrying with minimal fields...', updateError)
+        const { error: retryError } = await supabase
+          .from('profiles')
+          .update(minimalProfileData)
+          .eq('id', userId)
+          
+        if (retryError) {
+          console.error('Profile update failed:', retryError)
+          setError('Failed to save profile. Please try again.')
+          setIsSubmitting(false)
+          return
+        }
       }
 
-      if (response.ok || response.status === 204) {
-        onComplete()
-      } else {
-        const errorText = await response.text()
-        console.error('Profile update failed:', response.status, errorText)
-        setError(`Failed to save profile. Please try again. (${response.status})`)
-      }
+      onComplete()
     } catch (err) {
       console.error('Error updating profile:', err)
       setError('Network error. Please check your connection and try again.')

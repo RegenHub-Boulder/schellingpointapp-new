@@ -8,9 +8,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useTracks } from '@/hooks/useTracks'
+import { createClient } from '@/lib/supabase/client'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 const formats = [
   { value: 'talk', label: 'Talk', description: 'A presentation or lecture' },
@@ -57,19 +56,6 @@ function parseTimestamp(iso: string | null | undefined): { day: string; time: st
   return { day: `${year}-${month}-${dayNum}`, time: `${hh}:${mm}` }
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 // --- Profile types and search component ---
 
@@ -105,18 +91,14 @@ function ProfileSearch({
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const token = getAccessToken()
-        const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/profiles?display_name=ilike.*${encodeURIComponent(query.trim())}*&select=id,display_name,avatar_url&limit=8`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token || SUPABASE_KEY}`,
-            },
-          }
-        )
-        if (res.ok) {
-          const data: ProfileResult[] = await res.json()
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id,display_name,avatar_url')
+          .ilike('display_name', `%${query.trim()}%`)
+          .limit(8)
+          
+        if (!error && data) {
           setResults(data.filter((p) => !excludeIds.includes(p.id)))
           setShowDropdown(true)
         }
@@ -306,8 +288,9 @@ export function EditSessionModal({
       return
     }
 
-    const token = getAccessToken()
-    if (!token) {
+    const supabase = createClient()
+    const { data: { session: authSession } } = await supabase.auth.getSession()
+    if (!authSession?.access_token) {
       setError('Session expired. Please log in again.')
       return
     }
@@ -342,23 +325,13 @@ export function EditSessionModal({
         patchBody.host_name = hostNameText.trim() || null
       }
 
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${session.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify(patchBody),
-        }
-      )
+      const { error: updateError } = await supabase
+        .from('sessions')
+        .update(patchBody)
+        .eq('id', session.id)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to update session')
+      if (updateError) {
+        throw new Error(updateError.message || 'Failed to update session')
       }
 
       // Sync co-hosts if admin
@@ -371,29 +344,18 @@ export function EditSessionModal({
         // Added co-hosts
         const added = Array.from(editedIds).filter((id) => !originalIds.has(id))
 
-        const headers = {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        }
-
         await Promise.all([
           ...removed.map((userId) =>
-            fetch(
-              `${SUPABASE_URL}/rest/v1/session_cohosts?session_id=eq.${session.id}&user_id=eq.${userId}`,
-              { method: 'DELETE', headers }
-            )
+            supabase
+              .from('session_cohosts')
+              .delete()
+              .eq('session_id', session.id)
+              .eq('user_id', userId)
           ),
           ...added.map((userId) =>
-            fetch(
-              `${SUPABASE_URL}/rest/v1/session_cohosts`,
-              {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ session_id: session.id, user_id: userId }),
-              }
-            )
+            supabase
+              .from('session_cohosts')
+              .insert({ session_id: session.id, user_id: userId })
           ),
         ])
       }

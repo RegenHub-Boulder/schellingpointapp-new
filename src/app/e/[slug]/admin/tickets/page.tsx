@@ -22,11 +22,8 @@ import { Badge } from '@/components/ui/badge'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
-import { getAccessToken } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/payments/stripe'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 interface TicketTier {
   id: string
@@ -61,6 +58,7 @@ export default function AdminTicketsPage() {
   const eventSlug = params.slug as string
   const event = useEvent()
   const { isAdmin, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [tiers, setTiers] = React.useState<TicketTier[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -81,23 +79,15 @@ export default function AdminTicketsPage() {
   // Fetch tiers on mount
   React.useEffect(() => {
     const fetchTiers = async () => {
-      const token = getAccessToken()
-      if (!token) return
-
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/ticket_tiers?event_id=eq.${event.id}&order=display_order`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data } = await supabase
+          .from('ticket_tiers')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('display_order', { ascending: true })
 
-        if (response.ok) {
-          const data = await response.json()
-          setTiers(data)
+        if (data) {
+          setTiers(data as any)
         }
       } catch (err) {
         console.error('Error fetching tiers:', err)
@@ -140,8 +130,8 @@ export default function AdminTicketsPage() {
   }
 
   const handleSave = async () => {
-    const token = getAccessToken()
-    if (!token || !formName.trim()) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token || !formName.trim()) return
 
     setIsSaving(true)
 
@@ -161,42 +151,25 @@ export default function AdminTicketsPage() {
 
       if (editingTier) {
         // Update existing
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/ticket_tiers?id=eq.${editingTier.id}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(tierData),
-          }
-        )
+        const { data } = await supabase
+          .from('ticket_tiers')
+          .update(tierData)
+          .eq('id', editingTier.id)
+          .select()
 
-        if (response.ok) {
-          const [updated] = await response.json()
+        if (data && data.length > 0) {
+          const updated = data[0] as any
           setTiers(prev => prev.map(t => t.id === updated.id ? updated : t))
         }
       } else {
         // Create new
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/ticket_tiers`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            body: JSON.stringify(tierData),
-          }
-        )
+        const { data } = await supabase
+          .from('ticket_tiers')
+          .insert(tierData)
+          .select()
 
-        if (response.ok) {
-          const [created] = await response.json()
+        if (data && data.length > 0) {
+          const created = data[0] as any
           setTiers(prev => [...prev, created])
         }
       }
@@ -214,22 +187,13 @@ export default function AdminTicketsPage() {
   const handleDelete = async (tierId: string) => {
     if (!confirm('Are you sure you want to delete this ticket tier?')) return
 
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/ticket_tiers?id=eq.${tierId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      const { error } = await supabase
+        .from('ticket_tiers')
+        .delete()
+        .eq('id', tierId)
 
-      if (response.ok) {
+      if (!error) {
         setTiers(prev => prev.filter(t => t.id !== tierId))
       }
     } catch (err) {
@@ -238,26 +202,15 @@ export default function AdminTicketsPage() {
   }
 
   const toggleActive = async (tier: TicketTier) => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/ticket_tiers?id=eq.${tier.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify({ is_active: !tier.is_active }),
-        }
-      )
+      const { data, error } = await supabase
+        .from('ticket_tiers')
+        .update({ is_active: !tier.is_active })
+        .eq('id', tier.id)
+        .select()
 
-      if (response.ok) {
-        const [updated] = await response.json()
+      if (data && data.length > 0) {
+        const updated = data[0] as any
         setTiers(prev => prev.map(t => t.id === updated.id ? updated : t))
       }
     } catch (err) {

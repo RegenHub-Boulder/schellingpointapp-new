@@ -11,9 +11,7 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface Track {
   id: string
@@ -46,24 +44,11 @@ function formatDayLabel(dateKey: string): string {
   })
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 export default function MySchedulePage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [tracks, setTracks] = React.useState<Track[]>([])
   const [favorites, setFavorites] = React.useState<any[]>([])
@@ -83,18 +68,14 @@ export default function MySchedulePage() {
   React.useEffect(() => {
     const fetchTracks = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&is_active=eq.true&select=id,name,color&order=name`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('tracks')
+          .select('id,name,color')
+          .eq('event_id', event.id)
+          .eq('is_active', true)
+          .order('name')
 
-        if (response.ok) {
-          const data = await response.json()
+        if (!error && data) {
           setTracks(data)
         }
       } catch (err) {
@@ -110,22 +91,14 @@ export default function MySchedulePage() {
     if (!user) return
 
     const fetchFavorites = async () => {
-      const token = getAccessToken()
-      if (!token) return
-
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,session:sessions(id,title,description,format,duration,host_name,status,venue:venues(name),time_slot:time_slots(label,start_time,end_time),track:tracks(id,name,color))`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('session_id,session:sessions(id,title,description,format,duration,host_name,status,venue:venues(name),time_slot:time_slots(label,start_time,end_time),track:tracks(id,name,color))')
+          .eq('user_id', user.id)
+          .eq('event_id', event.id)
 
-        if (response.ok) {
-          const data = await response.json()
+        if (!error && data) {
           // Filter out any null sessions and sort by time slot
           const validFavorites = data
             .filter((f: any) => f.session)
@@ -151,23 +124,15 @@ export default function MySchedulePage() {
   const handleRemoveFavorite = async (sessionId: string) => {
     if (!user) return
 
-    const token = getAccessToken()
-    if (!token) return
-
     // Optimistic update
     setFavorites((prev) => prev.filter((s) => s.id !== sessionId))
 
     try {
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('session_id', sessionId)
     } catch (err) {
       console.error('Error removing favorite:', err)
     }

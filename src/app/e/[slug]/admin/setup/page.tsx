@@ -29,22 +29,7 @@ import { getEventDays, getEventDayLabel } from '@/lib/events/dates'
 import { cn } from '@/lib/utils'
 import { BulkSlotGenerator, type GeneratedSlot } from '@/components/admin/BulkSlotGenerator'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+import { createClient } from '@/lib/supabase/client'
 
 interface Venue {
   id: string
@@ -73,6 +58,7 @@ export default function AdminSetupPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin, isLoading: roleLoading, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Generate event days dynamically from event dates
   const eventDays = React.useMemo(() => {
@@ -112,30 +98,17 @@ export default function AdminSetupPage() {
   // Fetch data
   React.useEffect(() => {
     const fetchData = async () => {
-      const token = getAccessToken()
-      const authHeader = token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`
-
       try {
         const [venuesRes, timeSlotsRes] = await Promise.all([
-          fetch(`${SUPABASE_URL}/rest/v1/venues?event_id=eq.${event.id}&select=*&order=is_primary.desc,name`, {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': authHeader,
-            },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/time_slots?event_id=eq.${event.id}&select=*&order=start_time`, {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': authHeader,
-            },
-          }),
+          supabase.from('venues').select('*').eq('event_id', event.id).order('is_primary', { ascending: false }).order('name', { ascending: true }),
+          supabase.from('time_slots').select('*').eq('event_id', event.id).order('start_time', { ascending: true }),
         ])
 
-        if (venuesRes.ok) {
-          setVenues(await venuesRes.json())
+        if (!venuesRes.error) {
+          setVenues(venuesRes.data as any)
         }
-        if (timeSlotsRes.ok) {
-          setTimeSlots(await timeSlotsRes.json())
+        if (!timeSlotsRes.error) {
+          setTimeSlots(timeSlotsRes.data as any)
         }
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -154,15 +127,12 @@ export default function AdminSetupPage() {
 
   // Venue CRUD operations
   const handleSaveVenue = async () => {
-    const token = getAccessToken()
-    if (!token) return
-
     const features = venueFeatures
       .split(',')
       .map((f) => f.trim())
       .filter((f) => f.length > 0)
 
-    const slug = venueSlug || venueName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const slug = venueSlug || venueName.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
     const venueData = {
       name: venueName,
@@ -176,35 +146,25 @@ export default function AdminSetupPage() {
 
     try {
       if (editingVenue) {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/venues?id=eq.${editingVenue.id}&event_id=eq.${event.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify(venueData),
-        })
+        const { data } = await supabase
+          .from('venues')
+          .update(venueData)
+          .eq('id', editingVenue.id)
+          .eq('event_id', event.id)
+          .select()
 
-        if (response.ok) {
-          const [updated] = await response.json()
+        if (data && data.length > 0) {
+          const updated = data[0] as any
           setVenues((prev) => prev.map((v) => (v.id === editingVenue.id ? updated : v)))
         }
       } else {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/venues`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify(venueData),
-        })
+        const { data } = await supabase
+          .from('venues')
+          .insert(venueData)
+          .select()
 
-        if (response.ok) {
-          const [created] = await response.json()
+        if (data && data.length > 0) {
+          const created = data[0] as any
           setVenues((prev) => [...prev, created])
         }
       }
@@ -216,21 +176,16 @@ export default function AdminSetupPage() {
   }
 
   const handleDeleteVenue = async (id: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     if (!confirm('Delete this venue? All time slots and scheduled sessions will be affected.')) return
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/venues?id=eq.${id}&event_id=eq.${event.id}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-        },
-      })
+      const { error } = await supabase
+        .from('venues')
+        .delete()
+        .eq('id', id)
+        .eq('event_id', event.id)
 
-      if (response.ok) {
+      if (!error) {
         setVenues((prev) => prev.filter((v) => v.id !== id))
         setTimeSlots((prev) => prev.filter((s) => s.venue_id !== id))
       }
@@ -263,9 +218,6 @@ export default function AdminSetupPage() {
 
   // Time Slot CRUD operations
   const handleAddTimeSlot = async (venueId: string, dayDate: string, startTime: string, endTime: string, label: string, slotType: string, isBreak: boolean) => {
-    const token = getAccessToken()
-    if (!token) return
-
     // Use the event's timezone offset for the datetime
     const startDateTime = `${dayDate}T${startTime}:00`
     const endDateTime = `${dayDate}T${endTime}:00`
@@ -282,19 +234,13 @@ export default function AdminSetupPage() {
     }
 
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/time_slots`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
-        },
-        body: JSON.stringify(slotData),
-      })
+      const { data } = await supabase
+        .from('time_slots')
+        .insert(slotData)
+        .select()
 
-      if (response.ok) {
-        const [created] = await response.json()
+      if (data && data.length > 0) {
+        const created = data[0] as any
         setTimeSlots((prev) =>
           [...prev, created].sort((a, b) =>
             new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
@@ -307,19 +253,14 @@ export default function AdminSetupPage() {
   }
 
   const handleDeleteTimeSlot = async (id: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/time_slots?id=eq.${id}&event_id=eq.${event.id}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-        },
-      })
+      const { error } = await supabase
+        .from('time_slots')
+        .delete()
+        .eq('id', id)
+        .eq('event_id', event.id)
 
-      if (response.ok) {
+      if (!error) {
         setTimeSlots((prev) => prev.filter((s) => s.id !== id))
       }
     } catch (err) {

@@ -2,8 +2,7 @@
 
 import * as React from 'react'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 export interface Track {
   id: string
@@ -17,6 +16,7 @@ interface UseTracksResult {
 }
 
 export function useTracks(): UseTracksResult {
+  const supabase = React.useMemo(() => createClient(), [])
   const [tracks, setTracks] = React.useState<Track[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -25,18 +25,15 @@ export function useTracks(): UseTracksResult {
 
     const fetchTracks = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tracks?is_active=eq.true&select=id,name,color&order=name`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('tracks')
+          .select('id,name,color')
+          .eq('is_active', true)
+          .order('name')
 
-        if (response.ok && mounted) {
-          const data = await response.json()
+        if (error) throw error
+
+        if (mounted && data) {
           setTracks(data)
         }
       } catch (err) {

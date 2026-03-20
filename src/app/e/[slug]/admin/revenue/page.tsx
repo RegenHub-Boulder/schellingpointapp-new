@@ -20,10 +20,7 @@ import { AdminNav } from '@/components/admin/AdminNav'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { formatPrice } from '@/lib/payments/stripe'
-import { getAccessToken } from '@/lib/supabase/client'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface TicketTier {
   id: string
@@ -69,6 +66,7 @@ export default function RevenueDashboardPage() {
   const { user } = useAuth()
   const event = useEvent()
   const { isAdmin, isOwner } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [stats, setStats] = React.useState<RevenueStats | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -85,35 +83,29 @@ export default function RevenueDashboardPage() {
       }
 
       try {
-        const token = getAccessToken()
-        if (!token) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
           router.push('/login')
           return
         }
 
         // Fetch tiers
-        const tiersRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/ticket_tiers?event_id=eq.${event.id}&order=display_order.asc`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
-        const tiers: TicketTier[] = await tiersRes.json()
+        const { data: tiersData } = await supabase
+          .from('ticket_tiers')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('display_order', { ascending: true })
+          
+        const tiers: TicketTier[] = (tiersData || []) as any
 
         // Fetch tickets
-        const ticketsRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/tickets?event_id=eq.${event.id}&order=created_at.asc`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
-        const tickets: Ticket[] = await ticketsRes.json()
+        const { data: ticketsData } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('created_at', { ascending: true })
+
+        const tickets: Ticket[] = (ticketsData || []) as any
 
         // Calculate stats
         const confirmedTickets = tickets.filter(t => t.status === 'confirmed' || t.status === 'checked_in')

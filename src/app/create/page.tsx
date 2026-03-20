@@ -17,23 +17,8 @@ import { WIZARD_STEPS, getStepFromNumber, type WizardState, type WizardAction } 
 // ============================================================================
 // Auth Helpers
 // ============================================================================
+import { createClient } from '@/lib/supabase/client';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
-  const stored = localStorage.getItem(storageKey);
-  if (stored) {
-    try {
-      const session = JSON.parse(stored);
-      return session?.access_token || null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
 
 // Lazy load step components for better performance
 const BasicsStep = React.lazy(() => import('./steps/BasicsStep'));
@@ -189,7 +174,9 @@ function CreateWizardContent() {
 
     try {
       // Get the access token
-      const accessToken = getAccessToken();
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
       if (!accessToken) {
         setSubmitError('You must be logged in to create an event. Please sign in and try again.');
         setIsSubmitting(false);

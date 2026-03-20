@@ -11,35 +11,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 // ============================================================================
-// Auth Helpers
-// ============================================================================
-
-/**
- * Get the storage key for Supabase auth tokens
- */
-function getStorageKey(): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  return `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
-}
-
-/**
- * Get the current access token from localStorage
- */
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const stored = localStorage.getItem(getStorageKey());
-    if (!stored) return null;
-
-    const session = JSON.parse(stored);
-    return session?.access_token || null;
-  } catch {
-    return null;
-  }
-}
-
-// ============================================================================
 // Types
 // ============================================================================
 
@@ -99,27 +70,12 @@ export async function uploadImage(
     return { success: false, error: validationError };
   }
 
-  // Check for auth token first
-  const accessToken = getAccessToken();
-  if (!accessToken) {
-    return { success: false, error: 'You must be signed in to upload images.' };
-  }
-
   try {
     const supabase = createClient();
-
-    // Set the session from localStorage to ensure the client is authenticated
-    // This is necessary because our custom auth hook stores tokens in localStorage
-    // but the Supabase client doesn't know about them by default
-    const stored = localStorage.getItem(getStorageKey());
-    if (stored) {
-      const session = JSON.parse(stored);
-      if (session?.access_token && session?.refresh_token) {
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
-      }
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return { success: false, error: 'You must be signed in to upload images.' };
     }
 
     // Generate unique path

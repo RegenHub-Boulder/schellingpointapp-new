@@ -16,22 +16,7 @@ import { SessionFilters, defaultFilters } from '@/components/admin/SessionFilter
 import { BatchActions } from '@/components/admin/BatchActions'
 import Link from 'next/link'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+import { createClient } from '@/lib/supabase/client'
 
 type SessionStatus = 'pending' | 'approved' | 'rejected' | 'scheduled'
 type SortField = 'votes' | 'title' | 'duration' | 'created_at'
@@ -62,6 +47,7 @@ export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin, isLoading: roleLoading, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [sessions, setSessions] = React.useState<Session[]>([])
   const [venues, setVenues] = React.useState<Venue[]>([])
@@ -92,65 +78,18 @@ export default function AdminPage() {
   // Fetch data
   React.useEffect(() => {
     const fetchData = async () => {
-      const token = getAccessToken()
-      const authHeader = token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`
-
       try {
         const [sessionsRes, venuesRes, timeSlotsRes, tracksRes] = await Promise.all([
-          fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=*,venue:venues(id,name),time_slot:time_slots(id,label,start_time),track:tracks(id,name,color),cohosts:session_cohosts(user_id)&order=total_votes.desc`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': authHeader,
-              },
-            }
-          ),
-          fetch(
-            `${SUPABASE_URL}/rest/v1/venues?event_id=eq.${event.id}&select=*&order=name`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': authHeader,
-              },
-            }
-          ),
-          fetch(
-            `${SUPABASE_URL}/rest/v1/time_slots?event_id=eq.${event.id}&select=*&order=start_time`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': authHeader,
-              },
-            }
-          ),
-          fetch(
-            `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&select=*&order=name`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': authHeader,
-              },
-            }
-          ),
+          supabase.from('sessions').select('*,venue:venues(id,name),time_slot:time_slots(id,label,start_time),track:tracks(id,name,color),cohosts:session_cohosts(user_id)').eq('event_id', event.id).order('total_votes', { ascending: false }),
+          supabase.from('venues').select('*').eq('event_id', event.id).order('name'),
+          supabase.from('time_slots').select('*').eq('event_id', event.id).order('start_time'),
+          supabase.from('tracks').select('*').eq('event_id', event.id).order('name')
         ])
 
-        if (sessionsRes.ok) {
-          const data = await sessionsRes.json()
-          setSessions(data)
-        }
-        if (venuesRes.ok) {
-          const data = await venuesRes.json()
-          setVenues(data)
-        }
-        if (timeSlotsRes.ok) {
-          const data = await timeSlotsRes.json()
-          setTimeSlots(data)
-        }
-        if (tracksRes.ok) {
-          const data = await tracksRes.json()
-          setTracks(data)
-        }
+        if (!sessionsRes.error) setSessions(sessionsRes.data)
+        if (!venuesRes.error) setVenues(venuesRes.data)
+        if (!timeSlotsRes.error) setTimeSlots(timeSlotsRes.data)
+        if (!tracksRes.error) setTracks(tracksRes.data)
       } catch (err) {
         console.error('Error fetching admin data:', err)
       } finally {
@@ -260,7 +199,8 @@ export default function AdminPage() {
     action: 'approve' | 'reject' | 'assign_track' | 'delete',
     extra?: { reason?: string; track_id?: string | null }
   ) => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     setIsBatchLoading(true)
@@ -322,22 +262,12 @@ export default function AdminPage() {
 
   // Single session operations (for card view)
   const handleApprove = async (sessionId: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status: 'approved' }),
-        }
-      )
+      await supabase
+        .from('sessions')
+        .update({ status: 'approved' })
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) => (s.id === sessionId ? { ...s, status: 'approved' as SessionStatus } : s))
@@ -348,22 +278,12 @@ export default function AdminPage() {
   }
 
   const handleReject = async (sessionId: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status: 'rejected' }),
-        }
-      )
+      await supabase
+        .from('sessions')
+        .update({ status: 'rejected' })
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) => (s.id === sessionId ? { ...s, status: 'rejected' as SessionStatus } : s))
@@ -374,29 +294,19 @@ export default function AdminPage() {
   }
 
   const handleSchedule = async (sessionId: string, venueId: string, timeSlotId: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     const venue = venues.find((v) => v.id === venueId)
     const timeSlot = timeSlots.find((t) => t.id === timeSlotId)
 
     try {
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'scheduled',
-            venue_id: venueId,
-            time_slot_id: timeSlotId,
-          }),
-        }
-      )
+      await supabase
+        .from('sessions')
+        .update({
+          status: 'scheduled',
+          venue_id: venueId,
+          time_slot_id: timeSlotId,
+        })
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) =>
@@ -416,36 +326,29 @@ export default function AdminPage() {
       )
 
       // Notify host
-      fetch(`/api/sessions/${sessionId}/notify-host`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch((err) => console.error('Notify host error:', err))
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        fetch(`/api/sessions/${sessionId}/notify-host`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }).catch((err) => console.error('Notify host error:', err))
+      }
     } catch (err) {
       console.error('Error scheduling session:', err)
     }
   }
 
   const handleUnschedule = async (sessionId: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'approved',
-            venue_id: null,
-            time_slot_id: null,
-          }),
-        }
-      )
+      await supabase
+        .from('sessions')
+        .update({
+          status: 'approved',
+          venue_id: null,
+          time_slot_id: null,
+        })
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) =>
@@ -467,22 +370,14 @@ export default function AdminPage() {
   }
 
   const handleDelete = async (sessionId: string) => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
-      if (response.ok || response.status === 204) {
+      if (!error) {
         setSessions((prev) => prev.filter((s) => s.id !== sessionId))
       }
     } catch (err) {
@@ -491,7 +386,8 @@ export default function AdminPage() {
   }
 
   const handleNotifyHost = async (sessionId: string) => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     try {
@@ -521,7 +417,8 @@ export default function AdminPage() {
   const [isClearing, setIsClearing] = React.useState(false)
 
   const handleNotifyAllHosts = async () => {
-    const token = getAccessToken()
+    const { data: { session: currentSession } } = await supabase.auth.getSession()
+    const token = currentSession?.access_token
     if (!token) return
 
     const unnotified = sessions.filter(
@@ -562,7 +459,8 @@ export default function AdminPage() {
 
   // Test data operations
   const handleSeedTestSessions = async () => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     if (!confirm('This will create ~28 test sessions prefixed with [TEST]. Continue?')) {
@@ -596,7 +494,8 @@ export default function AdminPage() {
   }
 
   const handleClearTestSessions = async () => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     if (!confirm('This will delete all sessions prefixed with [TEST]. Continue?')) {

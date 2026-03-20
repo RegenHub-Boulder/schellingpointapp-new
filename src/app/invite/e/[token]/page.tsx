@@ -7,7 +7,7 @@ import { Loader2, CheckCircle, XCircle, Calendar, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
-import { getAccessToken } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 interface InvitationInfo {
   event: {
@@ -60,7 +60,9 @@ export default function AcceptEventInvitationPage() {
   }, [token])
 
   const handleAccept = async () => {
-    const accessToken = getAccessToken()
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
     if (!accessToken) {
       router.push(`/login?redirect=/invite/e/${token}`)
       return

@@ -2,9 +2,7 @@ import type { Metadata } from 'next'
 import { getEventBySlug } from '@/lib/events'
 import { notFound } from 'next/navigation'
 import { SessionDetailClient } from './SessionDetailClient'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/server'
 
 interface SessionPageProps {
   params: Promise<{ slug: string; id: string }>
@@ -13,20 +11,16 @@ interface SessionPageProps {
 // Fetch session data for metadata generation (server-side)
 async function getSession(id: string, eventId: string) {
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/sessions?id=eq.${id}&event_id=eq.${eventId}&select=*,host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color),venue:venues(*),time_slot:time_slots(*)`,
-      {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-        },
-        next: { revalidate: 60 }, // Cache for 60 seconds
-      }
-    )
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*,host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color),venue:venues(*),time_slot:time_slots(*)')
+      .eq('id', id)
+      .eq('event_id', eventId)
+      .single()
 
-    if (response.ok) {
-      const data = await response.json()
-      return data[0] || null
+    if (!error && data) {
+      return data
     }
     return null
   } catch {

@@ -25,24 +25,9 @@ import { Footer } from '@/components/Footer'
 import { useAuth } from '@/hooks/useAuth'
 import { cn, votesToCredits } from '@/lib/utils'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
+import { createClient } from '@/lib/supabase/client'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -113,6 +98,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   // Get event context
   const event = useEvent()
   const { isAdmin, voteCredits } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Generate nav items based on event slug
   const navItems = React.useMemo(() => getNavItems(event.slug), [event.slug])
@@ -157,27 +143,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     const fetchUserVotes = async () => {
-      const token = getAccessToken()
-      if (!token) {
-        setVotesLoaded(true)
-        return
-      }
-
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,vote_count`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('votes')
+          .select('session_id,vote_count')
+          .eq('user_id', user.id)
+          .eq('event_id', event.id)
 
-        if (response.ok) {
-          const data = await response.json()
+        if (error) throw error
+
+        if (data) {
           const votesMap: Record<string, number> = {}
-          data.forEach((v: { session_id: string; vote_count: number }) => {
+          data.forEach((v) => {
             votesMap[v.session_id] = v.vote_count
           })
           setUserVotes(votesMap)

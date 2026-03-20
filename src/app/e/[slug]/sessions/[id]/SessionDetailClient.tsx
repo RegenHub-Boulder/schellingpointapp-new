@@ -40,9 +40,7 @@ import { RSVPButton } from '@/components/RSVPButton'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { votesToCredits } from '@/lib/utils'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 const formatIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   talk: Mic,
@@ -60,20 +58,6 @@ const formatDescriptions: Record<string, string> = {
   demo: 'Live demonstration of a project or tool',
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 interface SessionDetailClientProps {
   sessionId: string
   initialSession?: any
@@ -84,6 +68,7 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
   const { user } = useAuth()
   const event = useEvent()
   const { voteCredits, isAdmin } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Use event's vote credits per user
   const totalCredits = voteCredits
@@ -130,25 +115,16 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
 
     const fetchSession = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('sessions')
+          .select('*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)')
+          .eq('id', sessionId)
+          .eq('event_id', event.id)
 
-        if (response.ok) {
-          const data = await response.json()
-          if (data.length > 0) {
-            setSession(data[0])
-          } else {
-            setError('Session not found')
-          }
+        if (!error && data && data.length > 0) {
+          setSession(data[0])
         } else {
-          setError('Failed to load session')
+          setError(error ? 'Failed to load session' : 'Session not found')
         }
       } catch (err) {
         console.error('Error fetching session:', err)
@@ -166,23 +142,15 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
     if (!user) return
 
     const fetchUserData = async () => {
-      const token = getAccessToken()
-      if (!token) return
-
       try {
         // Fetch all user votes for this event
-        const votesResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,vote_count`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data: votesData, error: votesError } = await supabase
+          .from('votes')
+          .select('session_id,vote_count')
+          .eq('user_id', user.id)
+          .eq('event_id', event.id)
 
-        if (votesResponse.ok) {
-          const votesData = await votesResponse.json()
+        if (!votesError && votesData) {
           const votesMap: Record<string, number> = {}
           votesData.forEach((v: any) => {
             votesMap[v.session_id] = v.vote_count
@@ -192,38 +160,27 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
         }
 
         // Fetch favorites for this event
-        const favResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&session_id=eq.${sessionId}&event_id=eq.${event.id}&select=id`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data: favData, error: favError } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
+          .eq('event_id', event.id)
 
-        if (favResponse.ok) {
-          const favData = await favResponse.json()
+        if (!favError && favData) {
           setIsFavorited(favData.length > 0)
         }
 
         // Fetch RSVP status for this session
-        const rsvpResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/session_rsvps?user_id=eq.${user.id}&session_id=eq.${sessionId}&select=status,waitlist_position`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data: rsvpData, error: rsvpError } = await supabase
+          .from('session_rsvps')
+          .select('status,waitlist_position')
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
 
-        if (rsvpResponse.ok) {
-          const rsvpData = await rsvpResponse.json()
-          if (rsvpData.length > 0) {
-            setUserRsvpStatus(rsvpData[0].status)
-            setUserWaitlistPosition(rsvpData[0].waitlist_position)
-          }
+        if (!rsvpError && rsvpData && rsvpData.length > 0) {
+          setUserRsvpStatus(rsvpData[0].status)
+          setUserWaitlistPosition(rsvpData[0].waitlist_position)
         }
       } catch (err) {
         console.error('Error fetching user data:', err)
@@ -236,12 +193,6 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
   // Handle vote change
   const handleVote = async (delta: number) => {
     if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const token = getAccessToken()
-    if (!token) {
       router.push('/login')
       return
     }
@@ -262,54 +213,32 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
 
     try {
       if (newVoteCount === 0) {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        await supabase
+          .from('votes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
       } else {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?on_conflict=user_id,session_id`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'resolution=merge-duplicates',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              session_id: sessionId,
-              event_id: event.id,
-              vote_count: newVoteCount,
-              credits_spent: newCredits,
-            }),
-          }
-        )
+        await supabase
+          .from('votes')
+          .upsert({
+            user_id: user.id,
+            session_id: sessionId,
+            event_id: event.id,
+            vote_count: newVoteCount,
+            credits_spent: newCredits,
+          }, { onConflict: 'user_id,session_id' })
       }
 
       // Refresh session to get updated vote counts
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
-        {
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-          },
-        }
-      )
+      const { data } = await supabase
+        .from('sessions')
+        .select('*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)')
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.length > 0) {
-          setSession(data[0])
-        }
+      if (data && data.length > 0) {
+        setSession(data[0])
       }
     } catch (err) {
       console.error('Error voting:', err)
@@ -325,44 +254,24 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
       return
     }
 
-    const token = getAccessToken()
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
     // Optimistic update
     setIsFavorited(!isFavorited)
 
     try {
       if (isFavorited) {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
       } else {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              session_id: sessionId,
-              event_id: event.id,
-            }),
-          }
-        )
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            session_id: sessionId,
+            event_id: event.id,
+          })
       }
     } catch (err) {
       console.error('Error toggling favorite:', err)
@@ -407,27 +316,18 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
   const handleDelete = async () => {
     if (!user) return
 
-    const token = getAccessToken()
-    if (!token) return
-
     setIsDeleting(true)
 
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId)
 
-      if (response.ok || response.status === 204) {
+      if (!error) {
         router.push(`/e/${event.slug}/sessions`)
       } else {
-        console.error('Error deleting session:', await response.text())
+        console.error('Error deleting session:', error.message)
         setShowDeleteConfirm(false)
       }
     } catch (err) {
@@ -1093,20 +993,14 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                 cohosts={session.cohosts}
                 onSave={async () => {
                   // Refresh session data
-                  const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
-                    {
-                      headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                      },
-                    }
-                  )
-                  if (response.ok) {
-                    const data = await response.json()
-                    if (data.length > 0) {
-                      setSession(data[0])
-                    }
+                  const { data } = await supabase
+                    .from('sessions')
+                    .select('*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)')
+                    .eq('id', sessionId)
+                    .eq('event_id', event.id)
+                  
+                  if (data && data.length > 0) {
+                    setSession(data[0])
                   }
                 }}
               />
@@ -1122,19 +1016,13 @@ export function SessionDetailClient({ sessionId, initialSession }: SessionDetail
                 cohosts={session.cohosts || []}
                 onCohostsChange={async () => {
                   // Refresh session data
-                  const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}&select=*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)`,
-                    {
-                      headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                      },
-                    }
-                  )
-                  if (response.ok) {
-                    const data = await response.json()
-                    if (data.length > 0) setSession(data[0])
-                  }
+                  const { data } = await supabase
+                    .from('sessions')
+                    .select('*,venue:venues(*),time_slot:time_slots(*),host:profiles!host_id(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests),cohosts:session_cohosts(user_id,display_order,profile:profiles(id,display_name,bio,avatar_url,affiliation,building,telegram,ens,interests)),track:tracks(id,name,color)')
+                    .eq('id', sessionId)
+                    .eq('event_id', event.id)
+                  
+                  if (data && data.length > 0) setSession(data[0])
                 }}
               />
             )}

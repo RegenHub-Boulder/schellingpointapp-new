@@ -14,8 +14,7 @@ import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { CSVSessionImport } from '@/components/admin/CSVSessionImport'
 import { cn } from '@/lib/utils'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 const formats = [
   { value: 'talk', label: 'Talk', description: 'A presentation or lecture' },
@@ -65,20 +64,6 @@ interface UserProfile {
   email: string
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 export default function AdminCreateSessionPage() {
   const router = useRouter()
   const params = useParams()
@@ -86,6 +71,7 @@ export default function AdminCreateSessionPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Form state
   const [title, setTitle] = React.useState('')
@@ -125,30 +111,15 @@ export default function AdminCreateSessionPage() {
   // Fetch tracks, venues, time slots
   React.useEffect(() => {
     const fetchData = async () => {
-      const token = getAccessToken()
-      const headers: Record<string, string> = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${token || SUPABASE_KEY}`,
-      }
-
       const [tracksRes, venuesRes, slotsRes] = await Promise.all([
-        fetch(
-          `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&is_active=eq.true&select=id,name,color&order=name`,
-          { headers }
-        ),
-        fetch(
-          `${SUPABASE_URL}/rest/v1/venues?event_id=eq.${event.id}&select=id,name&order=name`,
-          { headers }
-        ),
-        fetch(
-          `${SUPABASE_URL}/rest/v1/time_slots?event_id=eq.${event.id}&is_break=eq.false&select=id,start_time,end_time,label,day_date,venue_id&order=start_time`,
-          { headers }
-        ),
+        supabase.from('tracks').select('id,name,color').eq('event_id', event.id).eq('is_active', true).order('name'),
+        supabase.from('venues').select('id,name').eq('event_id', event.id).order('name'),
+        supabase.from('time_slots').select('id,start_time,end_time,label,day_date,venue_id').eq('event_id', event.id).eq('is_break', false).order('start_time'),
       ])
 
-      if (tracksRes.ok) setTracks(await tracksRes.json())
-      if (venuesRes.ok) setVenues(await venuesRes.json())
-      if (slotsRes.ok) setTimeSlots(await slotsRes.json())
+      if (!tracksRes.error && tracksRes.data) setTracks(tracksRes.data as any)
+      if (!venuesRes.error && venuesRes.data) setVenues(venuesRes.data as any)
+      if (!slotsRes.error && slotsRes.data) setTimeSlots(slotsRes.data as any)
     }
 
     if (event.id) fetchData()
@@ -163,22 +134,15 @@ export default function AdminCreateSessionPage() {
       }
 
       setIsSearching(true)
-      const token = getAccessToken()
-
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/profiles?or=(display_name.ilike.*${hostSearch}*,email.ilike.*${hostSearch}*)&select=id,display_name,email&limit=10`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token || SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id,display_name,email')
+          .or(`display_name.ilike.%${hostSearch}%,email.ilike.%${hostSearch}%`)
+          .limit(10)
 
-        if (response.ok) {
-          const data = await response.json()
-          setHostSearchResults(data)
+        if (!error && data) {
+          setHostSearchResults(data as any)
         }
       } catch (err) {
         console.error('Error searching users:', err)
@@ -222,7 +186,8 @@ export default function AdminCreateSessionPage() {
       return
     }
 
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) {
       setError('Session expired. Please log in again.')
       return

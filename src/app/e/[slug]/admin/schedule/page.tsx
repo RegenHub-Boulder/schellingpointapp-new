@@ -31,22 +31,7 @@ import { getEventDays, getEventDayLabel } from '@/lib/events/dates'
 import { formatInEventTimezone } from '@/lib/events/timezone'
 import { cn } from '@/lib/utils'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+import { createClient } from '@/lib/supabase/client'
 
 // Extended interfaces with new schema fields
 interface Venue {
@@ -152,6 +137,7 @@ export default function AdminSchedulePage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin, isLoading: roleLoading, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Generate event days dynamically from event dates
   const eventDays = React.useMemo(() => {
@@ -237,29 +223,18 @@ export default function AdminSchedulePage() {
   // Fetch data
   React.useEffect(() => {
     const fetchData = async () => {
-      const token = getAccessToken()
-      const authHeader = token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`
-
       try {
         const [venuesRes, timeSlotsRes, sessionsRes, tracksRes] = await Promise.all([
-          fetch(`${SUPABASE_URL}/rest/v1/venues?event_id=eq.${event.id}&select=*&order=is_primary.desc,name`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/time_slots?event_id=eq.${event.id}&select=*&order=start_time`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=*,track:tracks(id,name,slug,color)&order=total_votes.desc`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&select=*&order=name`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
+          supabase.from('venues').select('*').eq('event_id', event.id).order('is_primary', { ascending: false }).order('name', { ascending: true }),
+          supabase.from('time_slots').select('*').eq('event_id', event.id).order('start_time', { ascending: true }),
+          supabase.from('sessions').select('*,track:tracks(id,name,slug,color)').eq('event_id', event.id).order('total_votes', { ascending: false }),
+          supabase.from('tracks').select('*').eq('event_id', event.id).order('name', { ascending: true })
         ])
 
-        if (venuesRes.ok) setVenues(await venuesRes.json())
-        if (timeSlotsRes.ok) setTimeSlots(await timeSlotsRes.json())
-        if (sessionsRes.ok) setSessions(await sessionsRes.json())
-        if (tracksRes.ok) setTracks(await tracksRes.json())
+        if (!venuesRes.error) setVenues(venuesRes.data as any)
+        if (!timeSlotsRes.error) setTimeSlots(timeSlotsRes.data as any)
+        if (!sessionsRes.error) setSessions(sessionsRes.data as any)
+        if (!tracksRes.error) setTracks(tracksRes.data as any)
       } catch (err) {
         console.error('Error fetching data:', err)
       } finally {
@@ -272,7 +247,8 @@ export default function AdminSchedulePage() {
 
   // Fetch publish status
   const fetchPublishStatus = React.useCallback(async () => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     try {
@@ -286,7 +262,7 @@ export default function AdminSchedulePage() {
     } catch (err) {
       console.error('Error fetching publish status:', err)
     }
-  }, [event.slug])
+  }, [event.slug, supabase])
 
   React.useEffect(() => {
     fetchPublishStatus()
@@ -294,7 +270,8 @@ export default function AdminSchedulePage() {
 
   // Publish schedule handler
   const handlePublishSchedule = async () => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     setIsPublishing(true)
@@ -360,7 +337,8 @@ export default function AdminSchedulePage() {
       return
     }
 
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     // Save for undo
@@ -376,19 +354,15 @@ export default function AdminSchedulePage() {
     try {
       // If replacing, unschedule the existing session first
       if (existingSession && existingSession.id !== draggedSession.id) {
-        await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${existingSession.id}&event_id=eq.${event.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await supabase
+          .from('sessions')
+          .update({
             status: 'approved',
             venue_id: null,
             time_slot_id: null,
-          }),
-        })
+          })
+          .eq('id', existingSession.id)
+          .eq('event_id', event.id)
 
         setSessions((prev) =>
           prev.map((s) =>
@@ -399,19 +373,15 @@ export default function AdminSchedulePage() {
         )
       }
 
-      await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${draggedSession.id}&event_id=eq.${event.id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await supabase
+        .from('sessions')
+        .update({
           status: 'scheduled',
           venue_id: venueId,
           time_slot_id: slotId,
-        }),
-      })
+        })
+        .eq('id', draggedSession.id)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) =>
@@ -454,8 +424,8 @@ export default function AdminSchedulePage() {
 
   // Remove session from slot
   const handleRemoveFromSlot = async (sessionId: string) => {
-    const token = getAccessToken()
-    if (!token) return
+    const { data: { session: authSession } } = await supabase.auth.getSession()
+    if (!authSession?.access_token) return
 
     const session = sessions.find((s) => s.id === sessionId)
     if (!session) return
@@ -471,19 +441,15 @@ export default function AdminSchedulePage() {
     }
 
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${sessionId}&event_id=eq.${event.id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await supabase
+        .from('sessions')
+        .update({
           status: 'approved',
           venue_id: null,
           time_slot_id: null,
-        }),
-      })
+        })
+        .eq('id', sessionId)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) =>
@@ -504,25 +470,21 @@ export default function AdminSchedulePage() {
     if (historyIndex < 0) return
 
     const action = history[historyIndex]
-    const token = getAccessToken()
-    if (!token) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
 
     try {
       if (action.type === 'schedule') {
         // Reverse a schedule: put session back to original position
-        await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${action.sessionId}&event_id=eq.${event.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await supabase
+          .from('sessions')
+          .update({
             status: action.fromSlotId ? 'scheduled' : 'approved',
             venue_id: action.fromVenueId,
             time_slot_id: action.fromSlotId,
-          }),
-        })
+          })
+          .eq('id', action.sessionId)
+          .eq('event_id', event.id)
 
         setSessions((prev) =>
           prev.map((s) =>
@@ -538,19 +500,15 @@ export default function AdminSchedulePage() {
         )
       } else if (action.type === 'unschedule') {
         // Reverse an unschedule: put session back in slot
-        await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${action.sessionId}&event_id=eq.${event.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await supabase
+          .from('sessions')
+          .update({
             status: 'scheduled',
             venue_id: action.fromVenueId,
             time_slot_id: action.fromSlotId,
-          }),
-        })
+          })
+          .eq('id', action.sessionId)
+          .eq('event_id', event.id)
 
         setSessions((prev) =>
           prev.map((s) =>
@@ -570,30 +528,26 @@ export default function AdminSchedulePage() {
     } catch (err) {
       console.error('Undo error:', err)
     }
-  }, [historyIndex, history, event.id])
+  }, [historyIndex, history, event.id, supabase])
 
   // Redo last undone action
   const handleRedo = React.useCallback(async () => {
     if (historyIndex >= history.length - 1) return
 
     const action = history[historyIndex + 1]
-    const token = getAccessToken()
-    if (!token) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
 
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${action.sessionId}&event_id=eq.${event.id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await supabase
+        .from('sessions')
+        .update({
           status: action.toSlotId ? 'scheduled' : 'approved',
           venue_id: action.toVenueId,
           time_slot_id: action.toSlotId,
-        }),
-      })
+        })
+        .eq('id', action.sessionId)
+        .eq('event_id', event.id)
 
       setSessions((prev) =>
         prev.map((s) =>
@@ -612,14 +566,14 @@ export default function AdminSchedulePage() {
     } catch (err) {
       console.error('Redo error:', err)
     }
-  }, [historyIndex, history, event.id])
+  }, [historyIndex, history, event.id, supabase])
 
   // Reset day (unschedule all sessions for selected day)
   const handleResetDay = async () => {
     if (!confirm(`Clear all scheduled sessions for this day? This cannot be undone.`)) return
 
-    const token = getAccessToken()
-    if (!token) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
 
     const daySlotIds = new Set(
       timeSlots.filter((s) => s.day_date === selectedDay).map((s) => s.id)
@@ -630,19 +584,15 @@ export default function AdminSchedulePage() {
 
     for (const session of sessionsToReset) {
       try {
-        await fetch(`${SUPABASE_URL}/rest/v1/sessions?id=eq.${session.id}&event_id=eq.${event.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await supabase
+          .from('sessions')
+          .update({
             status: 'approved',
             venue_id: null,
             time_slot_id: null,
-          }),
-        })
+          })
+          .eq('id', session.id)
+          .eq('event_id', event.id)
       } catch (err) {
         console.error('Error resetting session:', err)
       }
@@ -663,7 +613,8 @@ export default function AdminSchedulePage() {
 
   // Auto-schedule: fetch preview
   const handleAutoSchedulePreview = async () => {
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     setAutoScheduleLoading(true)
@@ -698,7 +649,8 @@ export default function AdminSchedulePage() {
   const handleAutoScheduleApply = async () => {
     if (!autoScheduleResult) return
 
-    const token = getAccessToken()
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
     if (!token) return
 
     // Filter to only selected assignments

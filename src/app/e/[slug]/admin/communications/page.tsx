@@ -12,8 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
-import { getAccessToken } from '@/lib/supabase/client'
 import { formatDistanceToNow } from 'date-fns'
+import { createClient } from '@/lib/supabase/client'
 
 interface Broadcast {
   title: string
@@ -45,7 +45,9 @@ export default function AdminCommunicationsPage() {
   React.useEffect(() => {
     async function fetchHistory() {
       try {
-        const token = getAccessToken()
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
         if (!token) {
           console.warn('No auth token for broadcast history')
           setLoadingHistory(false)
@@ -77,7 +79,9 @@ export default function AdminCommunicationsPage() {
     setError(null)
 
     try {
-      const token = getAccessToken()
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       if (!token) {
         setError('Please log in to send announcements')
         setIsLoading(false)

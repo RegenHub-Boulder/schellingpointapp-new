@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useEvent } from '@/contexts/EventContext'
 import { useEventRole } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 // Dynamic import to avoid SSR issues with camera
 const QRScanner = dynamic(
@@ -44,20 +45,6 @@ interface CheckInStats {
   pending: number
 }
 
-function getAccessToken(): string | null {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 export default function CheckInPage() {
   const router = useRouter()
@@ -76,10 +63,12 @@ export default function CheckInPage() {
 
   // Fetch stats
   const fetchStats = React.useCallback(async () => {
-    const token = getAccessToken()
-    if (!token) return
-
     try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
       const response = await fetch(`/api/v1/events/${event.slug}/checkin`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +99,9 @@ export default function CheckInPage() {
     setScanning(false) // Pause scanner while processing
 
     try {
-      const token = getAccessToken()
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       if (!token) {
         router.push('/login')
         return

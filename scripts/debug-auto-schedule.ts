@@ -96,9 +96,9 @@ async function debug() {
     slotsByDay.get(day)!.push(slot)
   })
 
-  for (const [day, slots] of slotsByDay) {
+  for (const [day, slots] of Array.from(slotsByDay.entries())) {
     console.log(`  ${day}: ${slots.length} slots`)
-    slots.forEach(slot => {
+    slots.forEach((slot: any) => {
       const venue = venues.find(v => v.id === slot.venue_id)
       const start = new Date(slot.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       const end = new Date(slot.end_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })

@@ -18,22 +18,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+import { createClient } from '@/lib/supabase/client'
 
 interface Session {
   id: string
@@ -81,6 +66,7 @@ export default function AdminAnalyticsPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin, isLoading: roleLoading, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [sessions, setSessions] = React.useState<Session[]>([])
   const [tracks, setTracks] = React.useState<Track[]>([])
@@ -100,37 +86,22 @@ export default function AdminAnalyticsPage() {
   // Fetch data
   React.useEffect(() => {
     const fetchData = async () => {
-      const token = getAccessToken()
-      const authHeader = token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`
-
       try {
         const [sessionsRes, tracksRes, membersRes, votesRes, timeSlotsRes, venuesRes] = await Promise.all([
-          fetch(`${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=id,status,total_votes,track_id,venue_id,time_slot_id,format,created_at`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&select=id,name,color`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/event_members?event_id=eq.${event.id}&select=id,role,joined_at`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/votes?event_id=eq.${event.id}&select=id,credits_spent,user_id`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/time_slots?event_id=eq.${event.id}&select=id,is_break,venue_id`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/venues?event_id=eq.${event.id}&select=id,name,capacity`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': authHeader },
-          }),
+          supabase.from('sessions').select('id,status,total_votes,track_id,venue_id,time_slot_id,format,created_at').eq('event_id', event.id),
+          supabase.from('tracks').select('id,name,color').eq('event_id', event.id),
+          supabase.from('event_members').select('id,role,joined_at').eq('event_id', event.id),
+          supabase.from('votes').select('id,credits_spent,user_id').eq('event_id', event.id),
+          supabase.from('time_slots').select('id,is_break,venue_id').eq('event_id', event.id),
+          supabase.from('venues').select('id,name,capacity').eq('event_id', event.id),
         ])
 
-        if (sessionsRes.ok) setSessions(await sessionsRes.json())
-        if (tracksRes.ok) setTracks(await tracksRes.json())
-        if (membersRes.ok) setMembers(await membersRes.json())
-        if (votesRes.ok) setVotes(await votesRes.json())
-        if (timeSlotsRes.ok) setTimeSlots(await timeSlotsRes.json())
-        if (venuesRes.ok) setVenues(await venuesRes.json())
+        if (!sessionsRes.error && sessionsRes.data) setSessions(sessionsRes.data as any)
+        if (!tracksRes.error && tracksRes.data) setTracks(tracksRes.data as any)
+        if (!membersRes.error && membersRes.data) setMembers(membersRes.data as any)
+        if (!votesRes.error && votesRes.data) setVotes(votesRes.data as any)
+        if (!timeSlotsRes.error && timeSlotsRes.data) setTimeSlots(timeSlotsRes.data as any)
+        if (!venuesRes.error && venuesRes.data) setVenues(venuesRes.data as any)
       } catch (err) {
         console.error('Error fetching analytics data:', err)
       } finally {

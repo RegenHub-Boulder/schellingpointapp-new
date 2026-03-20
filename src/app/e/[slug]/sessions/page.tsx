@@ -11,6 +11,7 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { votesToCredits, cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 // Helper to format date in timezone as yyyy-MM-dd
 function formatDateInTimezone(date: Date, timezone: string): string {
@@ -34,9 +35,6 @@ function formatDayLabel(date: Date, timezone: string): string {
   return formatter.format(date)
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
 const formats = ['all', 'talk', 'workshop', 'discussion', 'panel', 'demo']
 const statusOptions = [
   { value: 'all', label: 'All' },
@@ -50,20 +48,6 @@ const sortOptions = [
   { value: 'time', label: 'By Time' },
 ]
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 interface Track {
   id: string
   name: string
@@ -75,6 +59,7 @@ export default function EventSessionsPage() {
   const { user } = useAuth()
   const event = useEvent()
   const { voteCredits } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   // Use event's vote credits per user
   const totalCredits = voteCredits
@@ -125,18 +110,14 @@ export default function EventSessionsPage() {
 
     const fetchTracks = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&is_active=eq.true&select=id,name,color&order=name`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('tracks')
+          .select('id,name,color')
+          .eq('event_id', event.id)
+          .eq('is_active', true)
+          .order('name')
 
-        if (response.ok && mounted) {
-          const data = await response.json()
+        if (!error && data && mounted) {
           setTracks(data)
         }
       } catch (err) {
@@ -157,18 +138,14 @@ export default function EventSessionsPage() {
 
     const fetchSessions = async () => {
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&status=in.(approved,scheduled)&select=*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color),cohosts:session_cohosts(profile:profiles(display_name))&order=total_votes.desc`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data, error } = await supabase
+          .from('sessions')
+          .select('*,venue:venues(name),time_slot:time_slots(label,start_time),track:tracks(id,name,color),cohosts:session_cohosts(profile:profiles(display_name))')
+          .eq('event_id', event.id)
+          .in('status', ['approved', 'scheduled'])
+          .order('total_votes', { ascending: false })
 
-        if (response.ok && mounted) {
-          const data = await response.json()
+        if (!error && data && mounted) {
           const order: Record<string, number> = {}
           data.forEach((s: any, i: number) => { order[s.id] = i })
           stableVoteOrderRef.current = order
@@ -199,23 +176,15 @@ export default function EventSessionsPage() {
     }
 
     const fetchUserData = async () => {
-      const token = getAccessToken()
-      if (!token) return
-
       try {
         // Fetch votes for this event's sessions
-        const votesResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,vote_count`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data: votesData, error: votesError } = await supabase
+          .from('votes')
+          .select('session_id,vote_count')
+          .eq('user_id', user.id)
+          .eq('event_id', event.id)
 
-        if (votesResponse.ok) {
-          const votesData = await votesResponse.json()
+        if (!votesError && votesData) {
           const votesMap: Record<string, number> = {}
           votesData.forEach((v: any) => {
             votesMap[v.session_id] = v.vote_count
@@ -224,18 +193,13 @@ export default function EventSessionsPage() {
         }
 
         // Fetch favorites for this event's sessions
-        const favResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        const { data: favData, error: favError } = await supabase
+          .from('favorites')
+          .select('session_id')
+          .eq('user_id', user.id)
+          .eq('event_id', event.id)
 
-        if (favResponse.ok) {
-          const favData = await favResponse.json()
+        if (!favError && favData) {
           setFavorites(new Set(favData.map((f: any) => f.session_id)))
         }
       } catch (err) {
@@ -249,12 +213,6 @@ export default function EventSessionsPage() {
   // Handle vote change
   const handleVote = async (sessionId: string, newVoteCount: number) => {
     if (!user) {
-      router.push('/login')
-      return
-    }
-
-    const token = getAccessToken()
-    if (!token) {
       router.push('/login')
       return
     }
@@ -285,43 +243,24 @@ export default function EventSessionsPage() {
     try {
       if (newVoteCount === 0) {
         // Delete vote
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
-        if (!response.ok) {
-          throw new Error('Delete failed')
-        }
+        const { error } = await supabase
+          .from('votes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
+        if (error) throw error
       } else {
         // Upsert vote
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/votes?on_conflict=user_id,session_id`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'resolution=merge-duplicates',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              session_id: sessionId,
-              event_id: event.id,
-              vote_count: newVoteCount,
-              credits_spent: newCredits,
-            }),
-          }
-        )
-        if (!response.ok) {
-          throw new Error('Upsert failed')
-        }
+        const { error } = await supabase
+          .from('votes')
+          .upsert({
+            user_id: user.id,
+            session_id: sessionId,
+            event_id: event.id,
+            vote_count: newVoteCount,
+            credits_spent: newCredits,
+          }, { onConflict: 'user_id,session_id' })
+        if (error) throw error
       }
       // Note: We no longer call refreshSessions() here to avoid re-sorting
       // Sessions will refresh on page load or manual refresh
@@ -346,12 +285,6 @@ export default function EventSessionsPage() {
       return
     }
 
-    const token = getAccessToken()
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
     const isFavorited = favorites.has(sessionId)
 
     // Optimistic update
@@ -368,34 +301,20 @@ export default function EventSessionsPage() {
     try {
       if (isFavorited) {
         // Delete favorite
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&session_id=eq.${sessionId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('session_id', sessionId)
       } else {
         // Add favorite
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/favorites`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              session_id: sessionId,
-              event_id: event.id,
-            }),
-          }
-        )
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            session_id: sessionId,
+            event_id: event.id,
+          })
       }
     } catch (err) {
       console.error('Error toggling favorite:', err)

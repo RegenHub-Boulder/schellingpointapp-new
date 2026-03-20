@@ -9,8 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useEvent } from '@/contexts/EventContext'
 import { useAuth } from '@/hooks/useAuth'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 interface TicketDetails {
   id: string
@@ -20,25 +19,12 @@ interface TicketDetails {
   }
 }
 
-function getAccessToken(): string | null {
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
-
 export default function TicketSuccessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const event = useEvent()
   const { user } = useAuth()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [ticket, setTicket] = React.useState<TicketDetails | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -54,25 +40,18 @@ export default function TicketSuccessPage() {
       }
 
       try {
-        const token = getAccessToken()
-        if (!token) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
           setError('Please log in to view your ticket')
           setLoading(false)
           return
         }
 
         // Fetch ticket with tier info
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tickets?id=eq.${ticketId}&select=id,status,tier:ticket_tiers(name)`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        )
-
-        const data = await response.json()
+        const { data } = await supabase
+          .from('tickets')
+          .select('id,status,tier:ticket_tiers(name)')
+          .eq('id', ticketId)
 
         if (data && data.length > 0) {
           setTicket({

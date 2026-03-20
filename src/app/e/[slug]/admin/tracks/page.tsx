@@ -21,10 +21,7 @@ import { AdminNav } from '@/components/admin/AdminNav'
 import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { cn } from '@/lib/utils'
-import { getAccessToken } from '@/lib/supabase/client'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createClient } from '@/lib/supabase/client'
 
 // Predefined color palette
 const COLOR_PALETTE = [
@@ -65,6 +62,7 @@ export default function AdminTracksPage() {
   const { user, isLoading: authLoading } = useAuth()
   const event = useEvent()
   const { isAdmin, isLoading: roleLoading, can } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [tracks, setTracks] = React.useState<Track[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -96,32 +94,30 @@ export default function AdminTracksPage() {
 
   // Fetch tracks
   const fetchTracks = React.useCallback(async () => {
-    const token = getAccessToken()
-    const authHeader = token ? `Bearer ${token}` : `Bearer ${SUPABASE_KEY}`
-
     try {
       // Get tracks with session counts
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/tracks?event_id=eq.${event.id}&select=*&order=display_order,name`,
-        { headers: { apikey: SUPABASE_KEY, Authorization: authHeader } }
-      )
+      const { data, error } = await supabase
+        .from('tracks')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('display_order', { ascending: true })
+        .order('name', { ascending: true })
 
-      if (response.ok) {
-        const data = await response.json()
-
+      if (!error && data) {
         // Get session counts per track
-        const countsRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=track_id`,
-          { headers: { apikey: SUPABASE_KEY, Authorization: authHeader } }
-        )
+        const { data: sessions, error: countsError } = await supabase
+          .from('sessions')
+          .select('track_id')
+          .eq('event_id', event.id)
 
-        const sessions = countsRes.ok ? await countsRes.json() : []
         const countMap = new Map<string, number>()
-        sessions.forEach((s: { track_id: string | null }) => {
-          if (s.track_id) {
-            countMap.set(s.track_id, (countMap.get(s.track_id) || 0) + 1)
-          }
-        })
+        if (!countsError && sessions) {
+          sessions.forEach((s: any) => {
+            if (s.track_id) {
+              countMap.set(s.track_id, (countMap.get(s.track_id) || 0) + 1)
+            }
+          })
+        }
 
         setTracks(
           data.map((t: Track) => ({
@@ -136,7 +132,7 @@ export default function AdminTracksPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [event.id])
+  }, [event.id, supabase])
 
   React.useEffect(() => {
     fetchTracks()
@@ -149,8 +145,8 @@ export default function AdminTracksPage() {
       return
     }
 
-    const token = getAccessToken()
-    if (!token) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
       setError('Session expired. Please log in again.')
       return
     }
@@ -161,41 +157,26 @@ export default function AdminTracksPage() {
     try {
       if (editingTrack) {
         // Update existing track
-        const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/tracks?id=eq.${editingTrack.id}`,
-          {
-            method: 'PATCH',
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              Prefer: 'return=minimal',
-            },
-            body: JSON.stringify({
-              name: formData.name.trim(),
-              slug: generateSlug(formData.name),
-              color: formData.color,
-              description: formData.description.trim() || null,
-            }),
-          }
-        )
+        const { error } = await supabase
+          .from('tracks')
+          .update({
+            name: formData.name.trim(),
+            slug: generateSlug(formData.name),
+            color: formData.color,
+            description: formData.description.trim() || null,
+          })
+          .eq('id', editingTrack.id)
 
-        if (!response.ok) {
+        if (error) {
           throw new Error('Failed to update track')
         }
       } else {
         // Create new track
         const maxOrder = tracks.reduce((max, t) => Math.max(max, t.display_order || 0), 0)
 
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/tracks`, {
-          method: 'POST',
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            Prefer: 'return=minimal',
-          },
-          body: JSON.stringify({
+        const { error } = await supabase
+          .from('tracks')
+          .insert({
             event_id: event.id,
             name: formData.name.trim(),
             slug: generateSlug(formData.name),
@@ -203,10 +184,9 @@ export default function AdminTracksPage() {
             description: formData.description.trim() || null,
             is_active: true,
             display_order: maxOrder + 1,
-          }),
-        })
+          })
 
-        if (!response.ok) {
+        if (error) {
           throw new Error('Failed to create track')
         }
       }
@@ -226,40 +206,25 @@ export default function AdminTracksPage() {
 
   // Handle delete
   const handleDelete = async (trackId: string) => {
-    const token = getAccessToken()
-    if (!token) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
 
     setIsDeleting(true)
 
     try {
       // First, clear track_id from any sessions using this track
-      await fetch(
-        `${SUPABASE_URL}/rest/v1/sessions?track_id=eq.${trackId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            Prefer: 'return=minimal',
-          },
-          body: JSON.stringify({ track_id: null }),
-        }
-      )
+      await supabase
+        .from('sessions')
+        .update({ track_id: null })
+        .eq('track_id', trackId)
 
       // Then delete the track
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/tracks?id=eq.${trackId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+      const { error } = await supabase
+        .from('tracks')
+        .delete()
+        .eq('id', trackId)
 
-      if (!response.ok) {
+      if (error) {
         throw new Error('Failed to delete track')
       }
 
@@ -277,8 +242,8 @@ export default function AdminTracksPage() {
   const handleDrop = async (targetTrack: Track) => {
     if (!draggedTrack || draggedTrack.id === targetTrack.id) return
 
-    const token = getAccessToken()
-    if (!token) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
 
     // Calculate new order
     const sourceIndex = tracks.findIndex((t) => t.id === draggedTrack.id)
@@ -298,16 +263,10 @@ export default function AdminTracksPage() {
 
     // Update in database
     for (const update of updates) {
-      await fetch(`${SUPABASE_URL}/rest/v1/tracks?id=eq.${update.id}`, {
-        method: 'PATCH',
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({ display_order: update.display_order }),
-      })
+      await supabase
+        .from('tracks')
+        .update({ display_order: update.display_order })
+        .eq('id', update.id)
     }
 
     setDraggedTrack(null)

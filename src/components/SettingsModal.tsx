@@ -19,24 +19,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -60,6 +45,7 @@ const DEFAULT_INTERESTS = [
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user, profile, refreshProfile } = useAuth()
+  const supabase = React.useMemo(() => createClient(), [])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const interestInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -87,19 +73,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (isOpen) {
       const fetchAllInterests = async () => {
         try {
-          const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?select=interests`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-              },
-            }
-          )
-          if (response.ok) {
-            const profiles = await response.json()
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('interests')
+
+          if (error) throw error
+          
+          if (data) {
             const interestSet = new Set<string>(DEFAULT_INTERESTS)
-            profiles.forEach((p: { interests: string[] | null }) => {
+            data.forEach((p: { interests: string[] | null }) => {
               p.interests?.forEach((i) => interestSet.add(i))
             })
             setAllInterests(Array.from(interestSet).sort())
@@ -212,40 +194,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleSave = async () => {
     if (!user) return
 
-    const token = getAccessToken()
-    if (!token) {
-      setSaveMessage({ type: 'error', text: 'Not authenticated. Please sign in again.' })
-      return
-    }
-
     setIsSaving(true)
     setSaveMessage(null)
 
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({
-            display_name: displayName.trim() || null,
-            bio: bio.trim() || null,
-            affiliation: affiliation.trim() || null,
-            building: building.trim() || null,
-            telegram: telegram.trim() || null,
-            ens: ens.trim() || null,
-            avatar_url: avatarUrl.trim() || null,
-            interests: interests.length > 0 ? interests : null,
-          }),
-        }
-      )
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: displayName.trim() || null,
+          bio: bio.trim() || null,
+          affiliation: affiliation.trim() || null,
+          building: building.trim() || null,
+          telegram: telegram.trim() || null,
+          ens: ens.trim() || null,
+          avatar_url: avatarUrl.trim() || null,
+          interests: interests.length > 0 ? interests : null,
+        })
+        .eq('id', user.id)
 
-      if (response.ok) {
+      if (!error) {
         setSaveMessage({ type: 'success', text: 'Saved!' })
         refreshProfile()
         // Auto-close after success
@@ -253,8 +220,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           onClose()
         }, 1000)
       } else {
-        const error = await response.text()
-        console.error('Save error:', error)
+        console.error('Save error:', error.message)
         setSaveMessage({ type: 'error', text: 'Failed to save. Please try again.' })
       }
     } catch (err) {
