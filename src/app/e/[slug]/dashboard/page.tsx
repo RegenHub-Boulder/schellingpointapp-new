@@ -21,23 +21,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useEvent, useEventRole } from '@/contexts/EventContext'
 import { votesToCredits } from '@/lib/utils'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`
-  const stored = localStorage.getItem(storageKey)
-  if (stored) {
-    try {
-      const session = JSON.parse(stored)
-      return session?.access_token || null
-    } catch {
-      return null
-    }
-  }
-  return null
-}
+import { createClient } from '@/lib/supabase/client'
 
 interface DashboardStats {
   totalSessions: number
@@ -51,6 +35,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const event = useEvent()
   const { voteCredits, isMember, isAdmin } = useEventRole()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [stats, setStats] = React.useState<DashboardStats | null>(null)
   const [userVotes, setUserVotes] = React.useState<Record<string, number>>({})
@@ -69,30 +54,19 @@ export default function DashboardPage() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch stats (sessions count)
-        const [sessionsRes, participantsRes] = await Promise.all([
-          fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&select=id,status,total_votes`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-              },
-            }
-          ),
-          fetch(
-            `${SUPABASE_URL}/rest/v1/event_members?event_id=eq.${event.id}&select=id`,
-            {
-              headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-              },
-            }
-          ),
+        // Fetch stats
+        const [{ data: sessions }, { count: participantsCount }] = await Promise.all([
+          supabase
+            .from('sessions')
+            .select('id,status,total_votes')
+            .eq('event_id', event.id),
+          supabase
+            .from('event_members')
+            .select('id', { count: 'exact', head: true })
+            .eq('event_id', event.id)
         ])
 
-        if (sessionsRes.ok) {
-          const sessions = await sessionsRes.json()
+        if (sessions) {
           const scheduled = sessions.filter((s: any) => s.status === 'scheduled').length
           const pending = sessions.filter((s: any) => s.status === 'pending').length
           const totalVotes = sessions.reduce((sum: number, s: any) => sum + (s.total_votes || 0), 0)
@@ -102,69 +76,48 @@ export default function DashboardPage() {
             scheduledSessions: scheduled,
             pendingSessions: pending,
             totalVotes,
-            totalParticipants: 0, // Will be set below
+            totalParticipants: participantsCount || 0,
           })
         }
 
-        if (participantsRes.ok) {
-          const participants = await participantsRes.json()
-          setStats(prev => prev ? { ...prev, totalParticipants: participants.length } : null)
-        }
-
         // Fetch recent sessions
-        const recentRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/sessions?event_id=eq.${event.id}&status=in.(approved,scheduled)&select=id,title,host_name,total_votes,status,track:tracks(name,color)&order=created_at.desc&limit=5`,
-          {
-            headers: {
-              'apikey': SUPABASE_KEY,
-              'Authorization': `Bearer ${SUPABASE_KEY}`,
-            },
-          }
-        )
+        const { data: recent } = await supabase
+          .from('sessions')
+          .select('id,title,host_name,total_votes,status,track:tracks(name,color)')
+          .eq('event_id', event.id)
+          .in('status', ['approved', 'scheduled'])
+          .order('created_at', { ascending: false })
+          .limit(5)
 
-        if (recentRes.ok) {
-          const recent = await recentRes.json()
+        if (recent) {
           setRecentSessions(recent)
         }
 
         // Fetch user-specific data if logged in
         if (user) {
-          const token = getAccessToken()
-          if (token) {
-            const [votesRes, favsRes] = await Promise.all([
-              fetch(
-                `${SUPABASE_URL}/rest/v1/votes?user_id=eq.${user.id}&event_id=eq.${event.id}&select=session_id,vote_count`,
-                {
-                  headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${token}`,
-                  },
-                }
-              ),
-              fetch(
-                `${SUPABASE_URL}/rest/v1/favorites?user_id=eq.${user.id}&event_id=eq.${event.id}&select=id`,
-                {
-                  headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${token}`,
-                  },
-                }
-              ),
-            ])
+          const [{ data: votes }, { count: favsCount }] = await Promise.all([
+            supabase
+              .from('votes')
+              .select('session_id,vote_count')
+              .eq('user_id', user.id)
+              .eq('event_id', event.id),
+            supabase
+              .from('favorites')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('event_id', event.id)
+          ])
 
-            if (votesRes.ok) {
-              const votes = await votesRes.json()
-              const votesMap: Record<string, number> = {}
-              votes.forEach((v: any) => {
-                votesMap[v.session_id] = v.vote_count
-              })
-              setUserVotes(votesMap)
-            }
+          if (votes) {
+            const votesMap: Record<string, number> = {}
+            votes.forEach((v: any) => {
+              votesMap[v.session_id] = v.vote_count
+            })
+            setUserVotes(votesMap)
+          }
 
-            if (favsRes.ok) {
-              const favs = await favsRes.json()
-              setUserFavorites(favs.length)
-            }
+          if (favsCount !== null) {
+            setUserFavorites(favsCount)
           }
         }
       } catch (err) {
@@ -175,7 +128,7 @@ export default function DashboardPage() {
     }
 
     fetchData()
-  }, [event.id, user])
+  }, [event.id, user, supabase])
 
   if (isLoading) {
     return (

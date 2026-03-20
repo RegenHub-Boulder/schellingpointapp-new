@@ -4,6 +4,7 @@ import * as React from 'react';
 import type { Event, EventRoleName } from '@/types/event';
 import { canRolePerform, isAdminRole, type Permission } from '@/lib/permissions';
 import { hexToHslValues, isValidHexColor, getContrastingForeground } from '@/lib/utils/color';
+import { createClient } from '@/lib/supabase/client';
 
 // Event context value
 interface EventContextValue {
@@ -24,24 +25,6 @@ interface EventRoleContextValue {
 const EventContext = React.createContext<EventContextValue | null>(null);
 const EventRoleContext = React.createContext<EventRoleContextValue | null>(null);
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const storageKey = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
-  const stored = localStorage.getItem(storageKey);
-  if (stored) {
-    try {
-      const session = JSON.parse(stored);
-      return session?.access_token || null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 interface EventProviderProps {
   event: Event;
   children: React.ReactNode;
@@ -51,76 +34,46 @@ export function EventProvider({ event, children }: EventProviderProps) {
   const [role, setRole] = React.useState<EventRoleName | null>(null);
   const [voteCredits, setVoteCredits] = React.useState<number>(event.voteCreditsPerUser);
   const [isLoading, setIsLoading] = React.useState(true);
+  const supabase = createClient();
 
   // Fetch user's role for this event, auto-join public events
   React.useEffect(() => {
     const fetchMembership = async () => {
-      const token = getAccessToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        // Get current user
-        const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!userResponse.ok) {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
           setIsLoading(false);
           return;
         }
 
-        const userData = await userResponse.json();
+        const user = session.user;
 
         // Get membership
-        const memberResponse = await fetch(
-          `${SUPABASE_URL}/rest/v1/event_members?event_id=eq.${event.id}&user_id=eq.${userData.id}&select=*`,
-          {
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const { data: memberData, error: memberError } = await supabase
+          .from('event_members')
+          .select('*')
+          .eq('event_id', event.id)
+          .eq('user_id', user.id);
 
-        if (memberResponse.ok) {
-          const data = await memberResponse.json();
-          if (data && data.length > 0) {
-            // User is already a member
-            setRole(data[0].role as EventRoleName);
-            setVoteCredits(data[0].vote_credits ?? event.voteCreditsPerUser);
-          } else if (event.visibility === 'public') {
-            // Auto-join public events as attendee
-            const joinResponse = await fetch(
-              `${SUPABASE_URL}/rest/v1/event_members`,
-              {
-                method: 'POST',
-                headers: {
-                  apikey: SUPABASE_KEY,
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                  Prefer: 'return=representation',
-                },
-                body: JSON.stringify({
-                  event_id: event.id,
-                  user_id: userData.id,
-                  role: 'attendee',
-                }),
-              }
-            );
+        if (!memberError && memberData && memberData.length > 0) {
+          // User is already a member
+          setRole(memberData[0].role as EventRoleName);
+          setVoteCredits(memberData[0].vote_credits ?? event.voteCreditsPerUser);
+        } else if (event.visibility === 'public') {
+          // Auto-join public events as attendee
+          const { data: joinData, error: joinError } = await supabase
+            .from('event_members')
+            .insert({
+              event_id: event.id,
+              user_id: user.id,
+              role: 'attendee',
+            })
+            .select();
 
-            if (joinResponse.ok) {
-              const joinData = await joinResponse.json();
-              if (joinData && joinData.length > 0) {
-                setRole('attendee');
-                setVoteCredits(joinData[0].vote_credits ?? event.voteCreditsPerUser);
-              }
-            }
+          if (!joinError && joinData && joinData.length > 0) {
+            setRole('attendee');
+            setVoteCredits(joinData[0].vote_credits ?? event.voteCreditsPerUser);
           }
         }
       } catch (err) {
@@ -131,7 +84,7 @@ export function EventProvider({ event, children }: EventProviderProps) {
     };
 
     fetchMembership();
-  }, [event.id, event.voteCreditsPerUser, event.visibility]);
+  }, [event.id, event.voteCreditsPerUser, event.visibility, supabase]);
 
   // Apply event theme colors as CSS custom properties
   React.useEffect(() => {
