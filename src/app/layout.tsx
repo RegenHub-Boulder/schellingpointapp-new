@@ -42,6 +42,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Test comment to trigger git changes
   return (
     <html lang="en" className="dark overflow-x-hidden">
       <body className={`${inter.className} min-h-screen bg-background antialiased overflow-x-hidden`}>

@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase])
 
   React.useEffect(() => {
+    console.log('[Auth] AuthProvider mounted.')
     let mounted = true
 
     async function initAuth() {
